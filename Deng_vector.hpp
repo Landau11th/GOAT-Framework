@@ -84,6 +84,30 @@ namespace Deng
             return a;
         }
     }
+    //dot product. Field_l could be either Field_r or Scalar
+    // for now only works for real matrix!!!!!!!!!!!!!!!
+    template<typename Field_l, typename Field_r>
+    Field_r operator^(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)
+    {
+        const int dim = l_vec.dimension();
+        if(dim != r_vec.dimension())
+        {
+            std::cout << "Dimension mismatch in ^ (inner product)!" << std::endl;
+            return 0;
+        }
+        else
+        {
+            Field_r a = r_vec[0];
+            //only work for scalars and matrices
+            a = 0*a;
+
+            for(int i = 0; i < dim; ++i)
+            {
+                a += l_vec[i]*r_vec[i];
+            }
+            return a;
+        }
+    }
 
 
 
@@ -148,6 +172,10 @@ namespace Deng
         //element-wise multiplication
         template<typename Field_l, typename Field_r>
         friend Col_vector<Field_r> operator%(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec);
+        //inner product. Field_l could be either Field_r or Scalar
+        //for now only works for real matrix!!!!!!!!!!!!!!!
+        template<typename Field_l, typename Field_r>
+        friend Field_r operator^(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec);
 
 
         //Field operator%(const Col_vector<Field>& b); //inner product
