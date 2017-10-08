@@ -10,4 +10,4 @@ Intel MKL could be used to boost the performance.
 -Previously added inner product for block vectors. Only work for real/Hermitian vectors
 -Plan to add Monte Carlo related functions
 -Going to have a Metropolis and Ising model, together with several RNG in C++ style. 
--May update the objects in an aggregation manner. 
+-May update the RNG objects in an aggregation manner
