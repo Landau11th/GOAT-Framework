@@ -11,3 +11,10 @@ Intel MKL could be used to boost the performance.
 -Plan to add Monte Carlo related functions
 -Going to have a Metropolis and Ising model, together with several RNG in C++ style. 
 -May update the RNG objects in an aggregation manner
+
+
+20171011-00:01
+-for armadillo, need to add armadillo include folder to Project Property/Visual C\C++/Include Directory
+-also add the path of lapack and blas into Linker Directory
+-Add .lib files as additional dependencies (for C::B .dll works)
+-Put .dll to the same dir with .exe
