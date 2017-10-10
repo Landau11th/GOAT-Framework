@@ -1,7 +1,3 @@
-#include <iostream>
-#include <complex>
-#include <armadillo>
-#include <typeinfo>
 #include"Deng_vector.hpp"
 
 
@@ -97,16 +93,19 @@ template <typename Field>
 Col_vector<Field>& Col_vector<Field>::operator=(Col_vector<Field> &&rhs) noexcept
 {
 
-    if(this != &rhs)
-    {
-        delete[] this->_vec;
-        this->_vec = rhs._vec;
-        rhs._vec = nullptr;
-    }
-    else
-    {
-        std::cout << "Memory clashes in operator '=&&'!\n";
-    }
+
+
+//    if(this != &rhs)
+//    {
+    assert( (this != &rhs) && "Memory clashes in operator '=&&'!\n");
+    delete[] this->_vec;
+    this->_vec = rhs._vec;
+    rhs._vec = nullptr;
+//    }
+//    else
+//    {
+//        std::cout << "Memory clashes in operator '=&&'!\n";
+//    }
 
     return *this;
 }
@@ -186,68 +185,68 @@ void Col_vector<Field>::operator*=(const Col_vector<Field>& b)
 }
 
 
-#ifdef DENG_VECTOR_COMPLEX
-template <typename Field>
-Field Col_vector<Field>::operator%(const Col_vector<Field>& b)
-{
-
-    int dddim = this->dimension();
-    Field a = 0.0;
-
-    if(dddim==b.dimension())
-    {
-        int i;
-
-        for(i=0; i<dddim; i++)
-        {
-            a += std::conj(this->vec[i] )* b.vec[i];
-        }
-    }
-    else
-    {
-        printf("Error in operator '*'!\n");
-    }
-
-    return a;
-}
-#else
-/*
-template <typename Field>
-Field Col_vector<Field>::operator%(const Col_vector<Field>& b)
-{
-    if((typeid(Field)==typeid(arma::Mat<float>))
-    || (typeid(Field)==typeid(arma::Mat<double>))
-    || (typeid(Field)==typeid(arma::Mat<std::complex<float> >))
-    || (typeid(Field)==typeid(arma::Mat<std::complex<double> >))
-      )
-    {
-        std::cout << "Inner product is not defined for block vectors" << std::endl;
-        return 0;
-    }
-    else
-    {
-        int dddim = this->dimension();
-        Field a = 0;
-
-        if(dddim==b.dimension())
-        {
-            int i;
-
-            for(i=0; i<dddim; i++)
-            {
-                a += this->_vec[i]* b[i];
-            }
-        }
-        else
-        {
-            printf("Error in operator '*'!\n");
-        }
-
-        return a;
-    }
-}
-*/
-#endif // Col_vector_COMPLEX
+//#ifdef DENG_VECTOR_COMPLEX
+//template <typename Field>
+//Field Col_vector<Field>::operator%(const Col_vector<Field>& b)
+//{
+//
+//    int dddim = this->dimension();
+//    Field a = 0.0;
+//
+//    if(dddim==b.dimension())
+//    {
+//        int i;
+//
+//        for(i=0; i<dddim; i++)
+//        {
+//            a += std::conj(this->vec[i] )* b.vec[i];
+//        }
+//    }
+//    else
+//    {
+//        printf("Error in operator '*'!\n");
+//    }
+//
+//    return a;
+//}
+//#else
+///*
+//template <typename Field>
+//Field Col_vector<Field>::operator%(const Col_vector<Field>& b)
+//{
+//    if((typeid(Field)==typeid(arma::Mat<float>))
+//    || (typeid(Field)==typeid(arma::Mat<double>))
+//    || (typeid(Field)==typeid(arma::Mat<std::complex<float> >))
+//    || (typeid(Field)==typeid(arma::Mat<std::complex<double> >))
+//      )
+//    {
+//        std::cout << "Inner product is not defined for block vectors" << std::endl;
+//        return 0;
+//    }
+//    else
+//    {
+//        int dddim = this->dimension();
+//        Field a = 0;
+//
+//        if(dddim==b.dimension())
+//        {
+//            int i;
+//
+//            for(i=0; i<dddim; i++)
+//            {
+//                a += this->_vec[i]* b[i];
+//            }
+//        }
+//        else
+//        {
+//            printf("Error in operator '*'!\n");
+//        }
+//
+//        return a;
+//    }
+//}
+//*/
+//#endif // Col_vector_COMPLEX
 //vector operations
 template <typename Field>
 Field dot_product(Col_vector<Field> a, Col_vector<Field> b)

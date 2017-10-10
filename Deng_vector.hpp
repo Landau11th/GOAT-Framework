@@ -4,6 +4,8 @@
 #include <iostream>
 #include <complex>
 #include <armadillo>
+//#include <typeinfo>
+#include <cassert>
 
 //define vectors
 namespace Deng
@@ -16,40 +18,28 @@ namespace Deng
     Col_vector<Field_r> operator+(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//addition
     {
         const int dim = l_vec.dimension();
-        if(dim != r_vec.dimension())
+        assert( (dim == r_vec.dimension()) && "Dimension mismatch in + (vector addition)!");
+
+        Col_vector<Field_r> a(dim);
+        for(int i = 0; i < dim; ++i)
         {
-            std::cout << "Dimension mismatch in + (vector addition)!" << std::endl;
-            return 0;
+            a[i] = l_vec[i]+r_vec[i];
         }
-        else
-        {
-            Col_vector<Field_r> a(dim);
-            for(int i = 0; i < dim; ++i)
-            {
-                a[i] = l_vec[i]+r_vec[i];
-            }
-            return a;
-        }
+        return a;
     }
     //subtraction
     template<typename Field_l, typename Field_r>
     Col_vector<Field_r> operator-(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//subtraction
     {
         const int dim = l_vec.dimension();
-        if(dim != r_vec.dimension())
+        assert( (dim == r_vec.dimension()) && "Dimension mismatch in - (vector subtraction)!");
+
+        Col_vector<Field_r> a(dim);
+        for(int i = 0; i < dim; ++i)
         {
-            std::cout << "Dimension mismatch in - (vector subtraction)!" << std::endl;
-            return 0;
+            a[i] = l_vec[i]-r_vec[i];
         }
-        else
-        {
-            Col_vector<Field_r> a(dim);
-            for(int i = 0; i < dim; ++i)
-            {
-                a[i] = l_vec[i]-r_vec[i];
-            }
-            return a;
-        }
+        return a;
     }
     //scalar multiplication
     template<typename Scalar, typename Field_prime>
@@ -69,20 +59,14 @@ namespace Deng
     Col_vector<Field_r> operator%(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//element-wise multiplication
     {
         const int dim = l_vec.dimension();
-        if(dim != r_vec.dimension())
+        assert( (dim == r_vec.dimension()) && "Dimension mismatch in % (element-wise multiplication)!");
+
+        Col_vector<Field_r> a(dim);
+        for(int i = 0; i < dim; ++i)
         {
-            std::cout << "Dimension mismatch in % (element-wise multiplication)!" << std::endl;
-            return 0;
+            a[i] = l_vec[i]*r_vec[i];
         }
-        else
-        {
-            Col_vector<Field_r> a(dim);
-            for(int i = 0; i < dim; ++i)
-            {
-                a[i] = l_vec[i]*r_vec[i];
-            }
-            return a;
-        }
+        return a;
     }
     //dot product. Field_l could be either Field_r or Scalar
     // for now only works for real matrix!!!!!!!!!!!!!!!
@@ -90,23 +74,17 @@ namespace Deng
     Field_r operator^(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)
     {
         const int dim = l_vec.dimension();
-        if(dim != r_vec.dimension())
-        {
-            std::cout << "Dimension mismatch in ^ (inner product)!" << std::endl;
-            return 0;
-        }
-        else
-        {
-            Field_r a = r_vec[0];
-            //only work for scalars and matrices
-            a = 0*a;
+        assert( (dim == r_vec.dimension()) && "Dimension mismatch in ^ (inner product)!" );
 
-            for(int i = 0; i < dim; ++i)
-            {
-                a += l_vec[i]*r_vec[i];
-            }
-            return a;
+        Field_r a = r_vec[0];
+        //only work for scalars and matrices
+        a = 0*a;
+
+        for(int i = 0; i < dim; ++i)
+        {
+            a += l_vec[i]*r_vec[i];
         }
+        return a;
     }
 
 
