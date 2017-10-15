@@ -13,25 +13,17 @@ namespace Deng
 		namespace Know_Gradient
 		{
 			template<typename real>
-			class Target_function : public Deng::Optimization::Know_Function::Target_function<real>
-			{
-			public:
-				virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) = 0;
-			};
-
-
-			template<typename real>
 			class Minimization : public Deng::Optimization::Know_Function::Minimization<real>
 			{
 			public:
 				//search directions
 				mutable arma::Col<real> search_direction;
 
-				Target_function<real>* f;
-				//to cover the defination of Assign_Target_Function in Deng::Optimization::Know_Function::Minimization<real>
-				//mainly because we want f points to Deng::Optimization::Know_Gradient::Target_function
-				//THIS MIGHT BE DANGEROUS!!!!!
-				void Assign_Target_Function(Target_function<real>* pt_f) { f = pt_f; };
+				//Target_function<real>* f;
+				////to cover the defination of Assign_Target_Function in Deng::Optimization::Know_Function::Minimization<real>
+				////mainly because we want f points to Deng::Optimization::Know_Gradient::Target_function
+				////THIS MIGHT BE DANGEROUS!!!!!
+				//void Assign_Target_Function(Target_function<real>* pt_f) { f = pt_f; };
 
 				Deng::Optimization::Know_Function::Minimization<real>::Minimization;
 				//omit the default constructor.

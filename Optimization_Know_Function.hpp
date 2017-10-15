@@ -4,6 +4,51 @@
 #include <iostream>
 #include <complex>
 #include <armadillo>
+#include <cassert>
+
+namespace Deng
+{
+	namespace Optimization
+	{
+		template<typename real>
+		class Target_function
+		{
+		public:
+			//we only know the function value
+			//every pure virtual function must be defined
+			//if certain function is unknown, one could define it as final and use assert in the body
+			//examples are shown below
+			virtual real function_value(const arma::Col<real>& coordinate_given) = 0;
+			virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) = 0;
+			virtual arma::Mat<real> Hessian(const arma::Col<real>& coordinate_given, real &function_value, arma::Col<real> &negative_gradient) = 0;
+			virtual void higher_order(const arma::Col<real>& coordinate_given, const real order) = 0;
+			virtual ~Target_function() = default;
+		};
+	}
+}
+
+//template<typename real>
+//class Know_Only_Function_value : Deng::Optimization::Target_function<real>
+//{
+//public:
+//	//we only know the function value
+//	//cause runtime errors when any derivatives is used
+//	virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) final
+//	{
+//		assert(false && "Gradient of Deng::Optimization::Know_function::Target_function should not be known!");
+//		return 0;
+//	};
+//	virtual arma::Mat<real> Hessian(const arma::Col<real>& coordinate_given, real &function_value, arma::Col<real> &negative_gradient) final
+//	{
+//		assert(false && "Hessian of Deng::Optimization::Know_function::Target_function should not be known!");
+//		return 0;
+//	};
+//	virtual void higher_order(const arma::Col<real>& coordinate_given, const real order) final
+//	{
+//		assert(false && "Higher order derivative of Deng::Optimization::Know_function::Target_function should not be known!");
+//	};
+//};
+
 
 
 namespace Deng
@@ -14,15 +59,6 @@ namespace Deng
 		//this name space is for the optimizing a function when we only know the function value
 		{
 			template<typename real>
-			class Target_function
-			{
-			public:
-				//we only know the function value
-				virtual real function_value(const arma::Col<real>& coordinate_given) = 0;
-				virtual ~Target_function() = default;
-			};
-
-			template<typename real>
 			class Minimization
 			{
 			protected:
@@ -31,7 +67,7 @@ namespace Deng
 				unsigned int _max_iteration;
 				//must know the target function
 				//since the target function could be very complex, I prefer to write it as a class, rather than just a function pointer
-				Target_function<real>* f;
+				Deng::Optimization::Target_function<real> *f;
 			public:
 				//coordinate in parametric space
 				//suppose to store the initial coordinate, and the final optimized parameters
@@ -43,9 +79,8 @@ namespace Deng
 					coordinate = arma::zeros<arma::Col<real> >(_dim_para);
 					f = nullptr;
 				};
-				//This function will be covered in namespace Know_Gradient
-				//THIS MIGHT BE DANGEROUS!!!!!
-				void Assign_Target_Function(Target_function<real>* pt_f) { f = pt_f; };
+				//f is Deng::Optimization::Target_function<real>
+				virtual void Assign_Target_Function(Deng::Optimization::Target_function<real> *pt_f) { f = pt_f; };
 
 				virtual ~Minimization()
 				{
@@ -56,6 +91,7 @@ namespace Deng
 		}
 	}
 }
+
 
 /*
 //an instance/test case for the realization of optimization
