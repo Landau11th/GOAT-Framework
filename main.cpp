@@ -93,7 +93,7 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
     for(int i = 1; i < _dim_para; ++i)
     {
         int mode = (i+3)/4;
-		if ((i - 1) % 4 <= 1)
+		if (((i - 1) % 4) <= 1)
 		{
 			ctrl[(i - 1) % 2] = parameters[i] * sin(mode * 2 * Pi*t / _tau);
 		}
@@ -145,10 +145,11 @@ public:
         assert(false && "Higher order derivatives are not known!");
     };
     Deng::GOAT::RK4<std::complex<real> > *RK_pt;
-    Deng::GOAT::Hamiltonian<std::complex<real> > *H_only_pt;
+    //Deng::GOAT::Hamiltonian<std::complex<real> > *H_only_pt;
     Deng::GOAT::Hamiltonian<std::complex<real> > *H_and_partial_H_pt;
 
-    GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
+    //GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
+	GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
     {
         RK_pt = input_RK_pt;
         H_and_partial_H_pt = input_H_and_partial_H_pt;
@@ -213,18 +214,18 @@ int main(int argc, char** argv)
     Single_spin_half H_and_partial_H(N_t, tau, dim_para);
     Deng::GOAT::RK4<std::complex<double> > RungeKutta;
 
-    GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
-
+    //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
+	GOAT_Target target(&RungeKutta, &H_and_partial_H);
 
 
     arma::Col<double> eigval_0;
     arma::Mat<std::complex<double> > eigvec_0;
-    arma::Mat<std::complex<double> > H_0 = H_only.B(0)^H_only.S;
+    arma::Mat<std::complex<double> > H_0 = H_and_partial_H.B(0)^ H_and_partial_H.S;
     arma::eig_sym(eigval_0  , eigvec_0  , H_0  );
 
     arma::Col<double> eigval_tau;
     arma::Mat<std::complex<double> > eigvec_tau;
-    arma::Mat<std::complex<double> >H_tau = H_only.B(tau)^H_only.S;
+    arma::Mat<std::complex<double> >H_tau = H_and_partial_H.B(tau)^ H_and_partial_H.S;
     arma::eig_sym(eigval_tau, eigvec_tau, H_tau);
 
     arma::Mat<std::complex<double> > unitary_goal = eigvec_0;
@@ -233,7 +234,7 @@ int main(int argc, char** argv)
 	std::cout << eigvec_0 << eigvec_tau << std::endl;
 
     unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t()*exp(2.0*imag_i);
-    unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t();
+    unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t()*exp(1.0*imag_i);
     
     target.Set_Controlled_Unitary_Matrix(unitary_goal);
 	std::cout << unitary_goal << std::endl;
@@ -247,7 +248,7 @@ int main(int argc, char** argv)
 
     Conj_Grad.Assign_Target_Function(&target);
     Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<double>;
-	arma::arma_rng::set_seed(time(nullptr));
+	//arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<double> start(dim_para, arma::fill::randu);
 	start = start - 1;
     Conj_Grad.Conj_Grad_Search(start);
