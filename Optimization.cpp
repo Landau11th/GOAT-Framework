@@ -19,9 +19,8 @@ template class Min_Conj_Grad<double>;
 template <typename real>
 arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coordinate) const
 {
-	//std::cout << "here2?" << std::endl;
 	//refer to Prof Wang Jian-sheng's lecture notes Numerical Recipe
-	//std::cout << "here?";
+	std::cout << "Start search\n";
 	real lambda, gamma;
 	//C++03 14.6.2 Dependent names
     //In the definition of a class template or a member of a class template,
@@ -37,32 +36,36 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 	unsigned int count_iteration = 0;
 	for (count_iteration = 0; count_iteration < this->_max_iteration; ++count_iteration)
 	{
-		std::cout << "starting " << count_iteration << " search" << std::endl;
+		if (sqrt(arma::as_scalar(this->search_direction.t()*this->search_direction)) < this->_epsilon)
+		{
+			std::cout << "gradient is close to 0 at coordinate" << std::endl;
+			std::cout << this->coordinate.t();
+			break;
+		}
+
+		//std::cout << "starting " << count_iteration << " search" << std::endl;
 		//lambda must be bigger than 0, or the function is wrong
 		//lambda = OneD_Minimum(this->coordinate, this->search_direction);
-
-        lambda = Opt_1D(this->coordinate, this->search_direction, this->f, this->_max_iteration, this->_epsilon);
+		std::cout << "Searching along " << this->search_direction.t();
+		std::cout << "From " << this->coordinate.t();
+		lambda = Opt_1D(this->coordinate, this->search_direction, this->f, this->_max_iteration, this->_epsilon);
 		if (lambda < 0)
 		{
 			std::cout << "1D search gives negative lambda at iteration " << count_iteration << " of Conjugate Gradient function" << std::endl;
-			break;
+			//break;
 		}
-		else
-		{
-			this->coordinate = lambda*this->search_direction + this->coordinate;
-			//
-			if (sqrt(arma::as_scalar(this->search_direction.t()*this->search_direction))<this->_epsilon)
-			{
-				break;
-			}
-			else
-			{
-				previous_search_direction = this->search_direction;
-				this->search_direction = this->f->negative_gradient(this->coordinate, function_value);
-				gamma = arma::as_scalar(this->search_direction.t()*this->search_direction) / arma::as_scalar(previous_search_direction.t()*previous_search_direction);
-				this->search_direction = this->search_direction + gamma*previous_search_direction;
-			}
-		}
+		this->coordinate = -lambda*this->search_direction + this->coordinate;
+
+
+
+		previous_search_direction = this->search_direction;
+		this->search_direction = this->f->negative_gradient(this->coordinate, function_value);
+		gamma = arma::as_scalar(this->search_direction.t()*this->search_direction) / arma::as_scalar(previous_search_direction.t()*previous_search_direction);
+		this->search_direction = this->search_direction + gamma*previous_search_direction;
+
+		std::cout << count_iteration << "th search stops at value: " << function_value << std::endl;
+		std::cout << "with coordinate: " << this->coordinate.t();
+
 	}
 	if (count_iteration >= this->_max_iteration)
 	{
@@ -126,7 +129,7 @@ template<typename real>
 real Deng::Optimization::OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, Target_function<real> *f, const unsigned int max_iteration, const real epsilon)
 {
     static const real Golden_Ratio = (sqrt(5.0)-1)/2;
-    const real step_size = 1.0;//sqrt(as_scalar(search_direction_given.t()*search_direction_given) ) * 1.0;
+	const real step_size = 1.0;// / sqrt(as_scalar(search_direction_given.t()*search_direction_given));
     const real epsilon_scaled = epsilon/sqrt(arma::as_scalar(search_direction_given.t()*search_direction_given));
 
     //left, middle and right values
@@ -177,7 +180,9 @@ real Deng::Optimization::OneD_Golden_Search(const arma::Col<real> start_coordina
 	}
 	if (find_shape >= find_shape_max)
 	{
-		std::cout << "Shit happened when looking for appropriate initial bracket!" << std::endl;
+		//std::cout << "Cannot find smaller value " << "up to " << right << std::endl;
+		//std::cout << "along " << search_direction_given.t() << " (gradient direction)" << std::endl;
+		//std::cout << "start from " << start_coordinate.t() << std::endl;
 		return -1;
 	}
 
@@ -186,7 +191,7 @@ real Deng::Optimization::OneD_Golden_Search(const arma::Col<real> start_coordina
     //real Golden ratio algorithm
     unsigned int count_iteration = 0;
     //the criteria does not contain absolute value because we know clearly which side the local minimum lies
-    while( (right - left)>=epsilon_scaled && count_iteration < max_iteration)
+    while( (f_right + f_left - 2.0*f_middle)/2>= epsilon && count_iteration < max_iteration)
     {
         if(f_left >= f_right)
         {

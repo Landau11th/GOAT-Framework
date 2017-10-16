@@ -29,7 +29,7 @@ namespace Deng
             //control parameters
             //have to use double as the parameters are usually real
             mutable arma::Col<double> parameters;
-            void Update_parameters(arma::Col<double> new_para)
+            virtual void Update_parameters(arma::Col<double> new_para)
             {
                 parameters = new_para;
             };

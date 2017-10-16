@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cmath>
+#include <ctime>
 
 #include "Optimization.hpp"
 #include "GOAT_RK4.hpp"
@@ -34,7 +36,6 @@ public:
     const double B_y_max = 1.0;
     const double B_z_max = 2.0;
     const double omega;
-    void Update_control_field(arma::Col<double> parameters);
 protected:
     double _hbar;
 };
@@ -91,8 +92,16 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
 
     for(int i = 1; i < _dim_para; ++i)
     {
-        int mode = (i+1)/2;
-        ctrl[i%2] = parameters[i] * sin(mode*2*Pi*t/_tau);
+        int mode = (i+3)/4;
+		if ((i - 1) % 4 <= 1)
+		{
+			ctrl[(i - 1) % 2] = parameters[i] * sin(mode * 2 * Pi*t / _tau);
+		}
+		else
+		{
+			ctrl[(i - 1) % 2] = parameters[i] * cos(mode * 2 * Pi*t / _tau);
+		}
+			
     }
 
     return ctrl;
@@ -102,6 +111,18 @@ Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(d
     Deng::Col_vector<arma::Mat<std::complex<double> > > iH_and_partial_H(_dim_para + 1);
 
     iH_and_partial_H[0] = (-imag_i/_hbar)*((B(t) + control_field(t))^S);
+
+	for (unsigned int i = 1; i <= _dim_para; ++i)
+	{
+		//could be generalize?
+		//double original_para = parameters[i];
+		parameters[i] += 0.01;
+		Deng::Col_vector<double> partial_control = control_field(t);
+		parameters[i] -= 0.01;
+		partial_control = (1/0.01)*(partial_control - control_field(t));
+		
+		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S);
+	}
 
     return iH_and_partial_H;
 }
@@ -130,7 +151,6 @@ public:
     GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
     {
         RK_pt = input_RK_pt;
-        H_only_pt = input_H_only_pt;
         H_and_partial_H_pt = input_H_and_partial_H_pt;
     }
     virtual void Set_Controlled_Unitary_Matrix(const arma::Mat<std::complex<double> > &matrix_desired)
@@ -142,24 +162,17 @@ public:
 };
 real GOAT_Target::function_value(const arma::Col<real>& coordinate_given)
 {
-    H_only_pt->parameters = coordinate_given;
-
-    RK_pt->Prep_for_H(*H_only_pt);
-    RK_pt->Evolve_to_final(*H_only_pt);
-
-    std::complex<double> trace_of_unitary = arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
-
-    //we want to know the maximum of the trace
-    return -trace_of_unitary.real();
+	real value;
+	negative_gradient(coordinate_given, value);
+	//std::cout << value << std::endl;
+    return value;
 
 }
 arma::Col<real> GOAT_Target::negative_gradient(const arma::Col<real>& coordinate_given, real &function_value)
 {
     H_and_partial_H_pt->parameters = coordinate_given;
-    std::cout << "grad_error?" << std::endl;
     RK_pt->Prep_for_H(*H_and_partial_H_pt);
     RK_pt->Evolve_to_final(*H_and_partial_H_pt);
-    std::cout << "grad_error2?" << std::endl;
     //give function value
     std::complex<double> trace_of_unitary = arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
     std::complex<double> g_phase_factor = trace_of_unitary;
@@ -169,11 +182,13 @@ arma::Col<real> GOAT_Target::negative_gradient(const arma::Col<real>& coordinate
     //calc gradient
     arma::Col<real> gradient = coordinate_given;
     gradient.zeros();
+	//std::cout << RK_pt->next_state[0];
+	//std::cout << -arma::trace(unitary_goal.t()*RK_pt->next_state[0]) << std::endl;
 
     for(unsigned int i = 0; i < gradient.n_elem; ++i)
     {
-        trace_of_unitary = arma::trace(unitary_goal.t()*RK_pt->next_state[i+1]);
-        trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
+        trace_of_unitary = -arma::trace(unitary_goal.t()*RK_pt->next_state[i+1]);
+        //trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
 
         gradient[i] = trace_of_unitary.real();
     }
@@ -184,14 +199,14 @@ arma::Col<real> GOAT_Target::negative_gradient(const arma::Col<real>& coordinate
 
 
 
-int main()
+int main(int argc, char** argv)
 {
-    const int N_t = 4000;
+    const int N_t = 1000;
     const double tau = 3.0;
-    const int dim_para = 5;
+    const int dim_para = std::stoi(argv[1]);
     //const double hbar = 1.0;
 
-    const double epsilon = 0.001;
+    const double epsilon = 0.01;
     const int max_iteration = 50;
 
     Single_spin_half H_only(N_t, tau, 0);
@@ -215,26 +230,27 @@ int main()
     arma::Mat<std::complex<double> > unitary_goal = eigvec_0;
     unitary_goal.zeros();
 
-    unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t();
+	std::cout << eigvec_0 << eigvec_tau << std::endl;
+
+    unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t()*exp(2.0*imag_i);
     unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t();
-    std::cout << "here2?" << std::endl;
+    
     target.Set_Controlled_Unitary_Matrix(unitary_goal);
+	std::cout << unitary_goal << std::endl;
 
-    double aa;
-    arma::Col<double> position(dim_para, arma::fill::zeros);
-    std::cout << target.negative_gradient(position, aa) << std::endl;
-
-
-    assert(false);
+    //double aa;
+    //arma::Col<double> position(dim_para, arma::fill::zeros);
+    //std::cout << target.negative_gradient(position, aa) << std::endl;
 
     Deng::Optimization::Min_Conj_Grad<double> Conj_Grad(dim_para, epsilon, max_iteration);
 
 
     Conj_Grad.Assign_Target_Function(&target);
     Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<double>;
-
-    //std::cout << "here?" << std::endl;
-    std::cout << Conj_Grad.Conj_Grad_Search();
+	arma::arma_rng::set_seed(time(nullptr));
+	arma::Col<double> start(dim_para, arma::fill::randu);
+	start = start - 1;
+    Conj_Grad.Conj_Grad_Search(start);
 
     //std::cout << "End\n";
 

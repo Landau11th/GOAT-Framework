@@ -46,7 +46,8 @@ Deng::Col_vector<arma::Mat<Field> > Hamiltonian<Field>::Derivative(Deng::Col_vec
 
     for(int i = 1; i <= _dim_para; ++i)
     {
-        k[i] = H_and_partial_H[i]*U[0] + H_and_partial_H[0]*U[i];
+		//std::cout << H_and_partial_H[i] << U[0] << H_and_partial_H[0] << U[i] << std::endl;
+		k[i] = H_and_partial_H[i]*U[0] + H_and_partial_H[0]*U[i];
     }
 
     return k;
