@@ -116,9 +116,9 @@ Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(d
 	{
 		//could be generalize?
 		//double original_para = parameters[i];
-		parameters[i] += 0.01;
+		parameters[i-1] += 0.01;
 		Deng::Col_vector<double> partial_control = control_field(t);
-		parameters[i] -= 0.01;
+		parameters[i-1] -= 0.01;
 		partial_control = (1/0.01)*(partial_control - control_field(t));
 		
 		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S);
