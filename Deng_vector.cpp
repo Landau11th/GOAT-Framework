@@ -37,7 +37,7 @@ Col_vector<Field>::Col_vector(const Col_vector<Field>& c)//copy constructor
     _dim = c.dimension();
     _vec = new Field[_dim];
 
-    for(int i = 0; i < _dim; ++i)
+    for(unsigned int i = 0; i < _dim; ++i)
         _vec[i] = c._vec[i];
 }
 template <typename Field>
@@ -70,7 +70,7 @@ Col_vector<Field>& Col_vector<Field>::operator=(const Col_vector<Field> & b)
 {
     set_size(b.dimension());
 
-    for(int i = 0; i < b.dimension(); ++i)
+    for(unsigned int i = 0; i < b.dimension(); ++i)
     {
         this->_vec[i] = b[i];
     }

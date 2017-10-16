@@ -40,7 +40,7 @@ Deng::Col_vector<arma::Mat<Field> > Hamiltonian<Field>::Derivative(Deng::Col_vec
     Deng::Col_vector<arma::Mat<Field> > k(_dim_para + 1);
 
     Deng::Col_vector<arma::Mat<Field> > H_and_partial_H(_dim_para + 1);
-    H_and_partial_H = dynamics(t);
+    H_and_partial_H = Dynamics(t);
     //std::cout << "here?" << std::endl;
     k[0] = H_and_partial_H[0]*U[0];
 
@@ -77,7 +77,7 @@ RK4<Field>::RK4(int dim_para, double tau, int N_t)
 }
 */
 template <typename Field>
-void RK4<Field>::Evolve_one_step(const Deng::GOAT::Hamiltonian<Field> &H, int t_index)
+void RK4<Field>::Evolve_one_step(const Deng::GOAT::Hamiltonian<Field> &H, const int t_index)
 {
     //Deng::Col_vector<arma::Mat<Field> > temp_state(H._dim_para + 1);
     //std::cout << "here0" << std::endl;

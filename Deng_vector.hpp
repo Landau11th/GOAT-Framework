@@ -17,11 +17,11 @@ namespace Deng
     template<typename Field_l, typename Field_r>
     Col_vector<Field_r> operator+(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//addition
     {
-        const int dim = l_vec.dimension();
+        const unsigned int dim = l_vec.dimension();
         assert( (dim == r_vec.dimension()) && "Dimension mismatch in + (vector addition)!");
 
         Col_vector<Field_r> a(dim);
-        for(int i = 0; i < dim; ++i)
+        for(unsigned int i = 0; i < dim; ++i)
         {
             a[i] = l_vec[i]+r_vec[i];
         }
@@ -31,11 +31,11 @@ namespace Deng
     template<typename Field_l, typename Field_r>
     Col_vector<Field_r> operator-(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//subtraction
     {
-        const int dim = l_vec.dimension();
+        const unsigned int dim = l_vec.dimension();
         assert( (dim == r_vec.dimension()) && "Dimension mismatch in - (vector subtraction)!");
 
         Col_vector<Field_r> a(dim);
-        for(int i = 0; i < dim; ++i)
+        for(unsigned int i = 0; i < dim; ++i)
         {
             a[i] = l_vec[i]-r_vec[i];
         }
@@ -45,10 +45,10 @@ namespace Deng
     template<typename Scalar, typename Field_prime>
     Col_vector<Field_prime> operator*(const Scalar& k, const Col_vector<Field_prime> & r_vec)//scalar multiplication
     {
-        const int dim = r_vec.dimension();
+        const unsigned int dim = r_vec.dimension();
         Col_vector<Field_prime> a(dim);
 
-        for(int i = 0; i < dim; ++i)
+        for(unsigned int i = 0; i < dim; ++i)
         {
             a[i] = k*r_vec[i];
         }
@@ -58,29 +58,30 @@ namespace Deng
     template<typename Field_l, typename Field_r>
     Col_vector<Field_r> operator%(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)//element-wise multiplication
     {
-        const int dim = l_vec.dimension();
+        const unsigned int dim = l_vec.dimension();
         assert( (dim == r_vec.dimension()) && "Dimension mismatch in % (element-wise multiplication)!");
 
         Col_vector<Field_r> a(dim);
-        for(int i = 0; i < dim; ++i)
+        for(unsigned int i = 0; i < dim; ++i)
         {
             a[i] = l_vec[i]*r_vec[i];
         }
         return a;
     }
     //dot product. Field_l could be either Field_r or Scalar
-    // for now only works for real matrix!!!!!!!!!!!!!!!
+    //for now only works for real matrix!!!!!!!!!!!!!!!
+    //choosing ^ is not quite appropriate
     template<typename Field_l, typename Field_r>
     Field_r operator^(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)
     {
-        const int dim = l_vec.dimension();
+        const unsigned int dim = l_vec.dimension();
         assert( (dim == r_vec.dimension()) && "Dimension mismatch in ^ (inner product)!" );
 
         Field_r a = r_vec[0];
         //only work for scalars and matrices
         a = 0*a;
 
-        for(int i = 0; i < dim; ++i)
+        for(unsigned int i = 0; i < dim; ++i)
         {
             a += l_vec[i]*r_vec[i];
         }
