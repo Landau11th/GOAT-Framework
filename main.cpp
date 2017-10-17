@@ -2,6 +2,8 @@
 #include <cmath>
 #include <ctime>
 
+
+#include <armadillo>
 #include "Optimization.hpp"
 #include "GOAT_RK4.hpp"
 #include "Deng_vector.hpp"
@@ -87,7 +89,8 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
 //    //Ctrl = 0.5 * Ctrl;
 
     Deng::Col_vector<double> ctrl(3);
-
+    ctrl[0] = 0.0;
+    ctrl[1] = 0.0;
     ctrl[2] = parameters[0];
 
     for(int i = 1; i < _dim_para; ++i)
@@ -95,13 +98,13 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
         int mode = (i+3)/4;
 		if (((i - 1) % 4) <= 1)
 		{
-			ctrl[(i - 1) % 2] = parameters[i] * sin(mode * 2 * Pi*t / _tau);
+			ctrl[(i - 1) % 2] += parameters[i] * sin(mode * 2 * Pi*t / _tau);
 		}
 		else
 		{
-			ctrl[(i - 1) % 2] = parameters[i] * cos(mode * 2 * Pi*t / _tau);
+			ctrl[(i - 1) % 2] += parameters[i] * cos(mode * 2 * Pi*t / _tau);
 		}
-			
+
     }
 
     return ctrl;
@@ -120,7 +123,7 @@ Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(d
 		Deng::Col_vector<double> partial_control = control_field(t);
 		parameters[i-1] -= 0.01;
 		partial_control = (1/0.01)*(partial_control - control_field(t));
-		
+
 		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S);
 	}
 
@@ -202,13 +205,13 @@ arma::Col<real> GOAT_Target::negative_gradient(const arma::Col<real>& coordinate
 
 int main(int argc, char** argv)
 {
-    const int N_t = 1000;
+    const int N_t = 2000;
     const double tau = 3.0;
     const int dim_para = std::stoi(argv[1]);
     //const double hbar = 1.0;
 
     const double epsilon = 0.01;
-    const int max_iteration = 50;
+    const int max_iteration = 20;
 
     Single_spin_half H_only(N_t, tau, 0);
     Single_spin_half H_and_partial_H(N_t, tau, dim_para);
@@ -235,7 +238,7 @@ int main(int argc, char** argv)
 
     unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t()*exp(2.0*imag_i);
     unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t()*exp(1.0*imag_i);
-    
+
     target.Set_Controlled_Unitary_Matrix(unitary_goal);
 	std::cout << unitary_goal << std::endl;
 
@@ -248,7 +251,7 @@ int main(int argc, char** argv)
 
     Conj_Grad.Assign_Target_Function(&target);
     Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<double>;
-	//arma::arma_rng::set_seed(time(nullptr));
+	arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<double> start(dim_para, arma::fill::randu);
 	start = start - 1;
     Conj_Grad.Conj_Grad_Search(start);

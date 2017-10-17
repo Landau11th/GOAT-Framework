@@ -40,31 +40,30 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 		{
 			std::cout << "gradient is close to 0 at coordinate" << std::endl;
 			std::cout << this->coordinate.t();
+			std::cout << "with function value " << function_value << std::endl;
 			break;
 		}
 
 		//std::cout << "starting " << count_iteration << " search" << std::endl;
 		//lambda must be bigger than 0, or the function is wrong
 		//lambda = OneD_Minimum(this->coordinate, this->search_direction);
-		std::cout << "Searching along " << this->search_direction.t();
-		std::cout << "From " << this->coordinate.t();
+		std::cout << "Search direction:" << this->search_direction.t();
+		std::cout << "from coordinate :" << this->coordinate.t();
 		lambda = Opt_1D(this->coordinate, this->search_direction, this->f, this->_max_iteration, this->_epsilon);
 		if (lambda < 0)
 		{
 			std::cout << "1D search gives negative lambda at iteration " << count_iteration << " of Conjugate Gradient function" << std::endl;
 			//break;
 		}
-		this->coordinate = -lambda*this->search_direction + this->coordinate;
 
-
-
+		this->coordinate = lambda*this->search_direction + this->coordinate;
 		previous_search_direction = this->search_direction;
 		this->search_direction = this->f->negative_gradient(this->coordinate, function_value);
 		gamma = arma::as_scalar(this->search_direction.t()*this->search_direction) / arma::as_scalar(previous_search_direction.t()*previous_search_direction);
 		this->search_direction = this->search_direction + gamma*previous_search_direction;
 
-		std::cout << count_iteration << "th search stops at value: " << function_value << std::endl;
-		std::cout << "with coordinate: " << this->coordinate.t();
+		std::cout << count_iteration << " th search stops at value: " << function_value << std::endl;
+		std::cout << "with coordinate: " << this->coordinate.t() << "\n\n";
 
 	}
 	if (count_iteration >= this->_max_iteration)
@@ -129,7 +128,7 @@ template<typename real>
 real Deng::Optimization::OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, Target_function<real> *f, const unsigned int max_iteration, const real epsilon)
 {
     static const real Golden_Ratio = (sqrt(5.0)-1)/2;
-	const real step_size = 1.0;// / sqrt(as_scalar(search_direction_given.t()*search_direction_given));
+	const real step_size = 1.0 / sqrt(as_scalar(search_direction_given.t()*search_direction_given));
     const real epsilon_scaled = epsilon/sqrt(arma::as_scalar(search_direction_given.t()*search_direction_given));
 
     //left, middle and right values
