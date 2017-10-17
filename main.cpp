@@ -70,7 +70,7 @@ Deng::Col_vector<double> Single_spin_half::B (double t) const
 }
 Deng::Col_vector<double> Single_spin_half::control_field(double t) const
 {
-
+//    //Berry transitionless field
 //    Deng::Col_vector<double> dB(3);
 //    Deng::Col_vector<double> B_field(3);
 //    B_field = B(t);
@@ -236,8 +236,8 @@ int main(int argc, char** argv)
 
 	std::cout << eigvec_0 << eigvec_tau << std::endl;
 
-    unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t()*exp(2.0*imag_i);
-    unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t()*exp(1.0*imag_i);
+    unitary_goal += eigvec_tau.col(0)*eigvec_0.col(0).t()*exp(-2.59742*imag_i);
+    unitary_goal += eigvec_tau.col(1)*eigvec_0.col(1).t()*exp(-0.544176*imag_i);
 
     target.Set_Controlled_Unitary_Matrix(unitary_goal);
 	std::cout << unitary_goal << std::endl;
@@ -254,9 +254,26 @@ int main(int argc, char** argv)
 	arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<double> start(dim_para, arma::fill::randu);
 	start = start - 1;
-    Conj_Grad.Conj_Grad_Search(start);
+    start = Conj_Grad.Conj_Grad_Search(start);
 
-    //std::cout << "End\n";
+
+
+
+
+//    arma::Col<double> berry_control(dim_para, arma::fill::zeros);
+//    berry_control[0] =  2.0*Pi/tau/5.0;
+//    berry_control[3] = -4.0*Pi/tau/5.0;
+//    berry_control[2] = -4.0*Pi/tau/5.0;
+//    Conj_Grad.Conj_Grad_Search(berry_control);
+//    target.function_value(berry_control);
+//    std::complex<double> phase0, phase1;
+//    phase0 = arma::as_scalar(eigvec_tau.col(0).t()*RungeKutta.next_state[0]*eigvec_0.col(0));
+//    phase1 = arma::as_scalar(eigvec_tau.col(1).t()*RungeKutta.next_state[0]*eigvec_0.col(1));
+//    std::cout << std::conj(phase0)*phase0 << " with arg " << std::arg(phase0) <<std::endl;
+//    std::cout << std::conj(phase1)*phase1 << " with arg " << std::arg(phase1) <<std::endl;
+
+
+
 
     return 0;
 }
