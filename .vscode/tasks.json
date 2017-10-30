@@ -1,0 +1,69 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "taskName": "Build each obj & Release",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-m64",
+                "-std=c++11",
+                "-ID:/Coding/armadillo-7.900.1/include",
+                "-c",
+                "main.cpp",
+                "Deng_vector.cpp",
+                "GOAT_RK4.cpp",
+                "Optimization.cpp"       
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "Release",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-o", 
+                "Debug/test_opt.exe", 
+                "Deng_vector.o", 
+                "GOAT_RK4.o", 
+                "main.o", 
+                "Optimization.o", 
+                "D:/Coding/armadillo-7.900.1/examples/lib_win64/lapack_win64_MT.dll", 
+                "D:/Coding/armadillo-7.900.1/examples/lib_win64/blas_win64_MT.dll"
+                //"Deng_vector.o"              
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+        
+        
+        
+        
+        
+        /*,
+        
+        {
+            "taskName": "build each obj",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-Wall",
+                "-std=c++11",
+                "-ID:/Coding/armadillo-7.900.1/include",
+                "-c",
+                "Deng_vector.cpp",
+                "-o",
+                "obj/Debug/Deng_vector.o"            
+            ]
+        }
+        */
+    ]
+}
+
