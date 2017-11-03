@@ -20,7 +20,7 @@ template <typename real>
 arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coordinate) const
 {
 	//refer to Prof Wang Jian-sheng's lecture notes Numerical Recipe
-	std::cout << "Start search\n";
+	std::cout << "Start search\n\n";
 	real lambda, gamma;
 	//C++03 14.6.2 Dependent names
     //In the definition of a class template or a member of a class template,
@@ -49,6 +49,7 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 		//lambda = OneD_Minimum(this->coordinate, this->search_direction);
 		std::cout << "Search direction:" << this->search_direction.t();
 		std::cout << "from coordinate :" << this->coordinate.t();
+		std::cout << "function value  :" << function_value << std::endl;
 		lambda = Opt_1D(this->coordinate, this->search_direction, this->f, this->_max_iteration, this->_epsilon);
 		if (lambda < 0)
 		{

@@ -31,3 +31,6 @@ Intel MKL could be used to boost the performance.
 -minor revisions for GOAT namespace
   *change Hamiltonian& to a member pointer
   *use mutable!!!!!!!
+  
+20171030-16:05
+-may need to add Chebychev propagation for time evolution
