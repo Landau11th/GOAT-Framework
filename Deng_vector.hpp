@@ -69,7 +69,7 @@ namespace Deng
         return a;
     }
     //dot product. Field_l could be either Field_r or Scalar
-    //for now only works for real matrix!!!!!!!!!!!!!!!
+    //for now only works for real/hermitian matrix!!!!!!!!!!!!!!!
     //choosing ^ is not quite appropriate
     template<typename Field_l, typename Field_r>
     Field_r operator^(const Col_vector<Field_l>& l_vec, const Col_vector<Field_r> & r_vec)
