@@ -135,72 +135,6 @@ Deng::Col_vector<arma::Mat<elementtype>> Single_spin_half::Dynamics(real t) cons
 }
 
 
-class GOAT_Target : public Deng::Optimization::Target_function<real>
-{
-public:
-    virtual real function_value(const arma::Col<real>& coordinate_given) override;
-    virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) override;
-    virtual arma::Mat<real> Hessian(const arma::Col<real>& coordinate_given, real &function_value, arma::Col<real> &negative_gradient)
-    {
-        assert(false && "Hessian is not known!");
-        return 0;
-    };
-    virtual void higher_order(const arma::Col<real>& coordinate_given, const real order)
-    {
-        assert(false && "Higher order derivatives are not known!");
-    };
-    Deng::GOAT::RK4<elementtype, real> *RK_pt;
-    //Deng::GOAT::Hamiltonian<std::complex<real> > *H_only_pt;
-    Deng::GOAT::Hamiltonian<elementtype, real> *H_and_partial_H_pt;
-
-    //GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
-	GOAT_Target(Deng::GOAT::RK4<elementtype, real> *input_RK_pt, Deng::GOAT::Hamiltonian<elementtype, real> *input_H_and_partial_H_pt)
-    {
-        RK_pt = input_RK_pt;
-        H_and_partial_H_pt = input_H_and_partial_H_pt;
-    }
-    virtual void Set_Controlled_Unitary_Matrix(const arma::Mat<elementtype> &matrix_desired)
-    {
-        unitary_goal = matrix_desired;
-    };
-    arma::Mat<elementtype> unitary_goal;
-
-};
-real GOAT_Target::function_value(const arma::Col<real>& coordinate_given)
-{
-	real value;
-	negative_gradient(coordinate_given, value);
-	//std::cout << value << std::endl;
-    return value;
-
-}
-arma::Col<real> GOAT_Target::negative_gradient(const arma::Col<real>& coordinate_given, real &function_value)
-{
-    H_and_partial_H_pt->parameters = coordinate_given;
-    RK_pt->Prep_for_H(*H_and_partial_H_pt);
-    RK_pt->Evolve_to_final(*H_and_partial_H_pt);
-    //give function value
-    std::complex<double> trace_of_unitary = arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
-    std::complex<double> g_phase_factor = trace_of_unitary;
-    g_phase_factor = std::conj(g_phase_factor)/sqrt(pow(g_phase_factor.real(),2.0) + pow(g_phase_factor.imag(),2.0));
-    function_value = -trace_of_unitary.real();
-
-    //calc gradient
-    arma::Col<real> gradient = coordinate_given;
-    gradient.zeros();
-	//std::cout << RK_pt->next_state[0];
-	//std::cout << -arma::trace(unitary_goal.t()*RK_pt->next_state[0]) << std::endl;
-
-    for(unsigned int i = 0; i < gradient.n_elem; ++i)
-    {
-        trace_of_unitary = -arma::trace(unitary_goal.t()*RK_pt->next_state[i+1]);
-        //trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
-
-        gradient[i] = trace_of_unitary.real();
-    }
-
-    return -gradient;
-}
 
 
 
@@ -220,7 +154,7 @@ int main(int argc, char** argv)
     Deng::GOAT::RK4<elementtype, real> RungeKutta;
 
     //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
-	GOAT_Target target(&RungeKutta, &H_and_partial_H);
+	Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RungeKutta, &H_and_partial_H);
 
 
     arma::Col<real> eigval_0;

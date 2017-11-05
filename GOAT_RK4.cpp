@@ -107,5 +107,44 @@ void RK4<Field, Parameter>::Evolve_to_final(const Deng::GOAT::Hamiltonian<Field,
 }
 
 
+template class Deng::GOAT::GOAT_Target_1st_order<std::complex<float>, float >;
+template class Deng::GOAT::GOAT_Target_1st_order<std::complex<double>, double>;
 
 
+template<typename Field, typename Parameter>
+Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given)
+{
+	Parameter value;
+	negative_gradient(coordinate_given, value);
+	//std::cout << value << std::endl;
+	return value;
+
+}
+template<typename Field, typename Parameter>
+arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value)
+{
+	H_and_partial_H_pt->parameters = coordinate_given;
+	RK_pt->Prep_for_H(*H_and_partial_H_pt);
+	RK_pt->Evolve_to_final(*H_and_partial_H_pt);
+	//give function value
+	Field trace_of_unitary = arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
+	Field g_phase_factor = trace_of_unitary;
+	g_phase_factor = std::conj(g_phase_factor) / std::abs(g_phase_factor);
+	function_value = -trace_of_unitary.real();
+
+	//calc gradient
+	arma::Col<Parameter> gradient = coordinate_given;
+	gradient.zeros();
+	//std::cout << RK_pt->next_state[0];
+	//std::cout << -arma::trace(unitary_goal.t()*RK_pt->next_state[0]) << std::endl;
+
+	for (unsigned int i = 0; i < gradient.n_elem; ++i)
+	{
+		trace_of_unitary = -arma::trace(unitary_goal.t()*RK_pt->next_state[i + 1]);
+		//trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
+
+		gradient[i] = trace_of_unitary.real();
+	}
+
+	return -gradient;
+}

@@ -6,6 +6,7 @@
 #include <armadillo>
 
 #include"Deng_vector.hpp"
+#include"Optimization.hpp"
 
 namespace Deng
 {
@@ -64,6 +65,42 @@ namespace Deng
             virtual void Evolve_to_final(const Deng::GOAT::Hamiltonian<Field, Parameter> &H);
 
         };
+
+
+
+		template<typename Field, typename Parameter>
+		class GOAT_Target_1st_order : public Deng::Optimization::Target_function<Parameter>
+		{
+		public:
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
+			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient)
+			{
+				assert(false && "Hessian is not known for class GOAT_Target_1st_order!\n");
+				return 0;
+			};
+			virtual void higher_order(const arma::Col<Parameter>& coordinate_given, const Parameter order)
+			{
+				assert(false && "Higher order derivatives are not known for class GOAT_Target_1st_order!\n");
+			};
+			Deng::GOAT::RK4<Field, Parameter> *RK_pt;
+			//Deng::GOAT::Hamiltonian<std::complex<real> > *H_only_pt;
+			Deng::GOAT::Hamiltonian<Field, Parameter> *H_and_partial_H_pt;
+
+			//GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
+			GOAT_Target_1st_order(Deng::GOAT::RK4<Field, Parameter> *input_RK_pt, Deng::GOAT::Hamiltonian<Field, Parameter> *input_H_and_partial_H_pt)
+			{
+				RK_pt = input_RK_pt;
+				H_and_partial_H_pt = input_H_and_partial_H_pt;
+			}
+			virtual void Set_Controlled_Unitary_Matrix(const arma::Mat<Field> &matrix_desired)
+			{
+				unitary_goal = matrix_desired;
+			};
+			arma::Mat<Field> unitary_goal;
+
+		};
+		
 
     }
 }
