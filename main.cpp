@@ -9,6 +9,10 @@
 #include "Deng_vector.hpp"
 
 
+typedef float real;
+typedef std::complex<float> elementtype;
+
+
 //mathematical constants
 #ifndef DENG_PI_DEFINED
 #define DENG_PI_DEFINED
@@ -20,29 +24,29 @@ const std::complex<double> imag_i(0, 1.0);
 
 
 //Berry's transition-less driving
-class Single_spin_half : public Deng::GOAT::Hamiltonian<std::complex<double> >
+class Single_spin_half : public Deng::GOAT::Hamiltonian<elementtype, real>
 {
-    friend class Deng::GOAT::RK4<std::complex<double> >;
+    friend class Deng::GOAT::RK4<elementtype, real>;
 public:
-    virtual Deng::Col_vector<arma::Mat<std::complex<double> > > Dynamics(double t) const override;
+    virtual Deng::Col_vector<arma::Mat<elementtype>> Dynamics(real t) const override;
     //Pauli matrix, magnetic field and its partial derivative wrt time
-    Deng::Col_vector<arma::Mat<std::complex<double> > > S;
-    Deng::Col_vector<double> B(double t) const;
-    Deng::Col_vector<double> partialB(double t) const;
+    Deng::Col_vector<arma::Mat<elementtype>> S;
+    Deng::Col_vector<real> B(real t) const;
+    Deng::Col_vector<real> partialB(real t) const;
     //control magnetic field
-    Deng::Col_vector<double> control_field(double t) const;
+    Deng::Col_vector<real> control_field(real t) const;
     //inherit constructor
-    using Deng::GOAT::Hamiltonian<std::complex<double> >::Hamiltonian;
-    Single_spin_half(int N_t, double tau, int dim_para = 0, double hbar = 1.0);
-    const double B_x_max = 1.0;
-    const double B_y_max = 1.0;
-    const double B_z_max = 2.0;
-    const double omega;
+    using Deng::GOAT::Hamiltonian<elementtype, real>::Hamiltonian;
+    Single_spin_half(int N_t, real tau, int dim_para = 0, real hbar = 1.0);
+    const real B_x_max = 1.0;
+    const real B_y_max = 1.0;
+    const real B_z_max = 2.0;
+    const real omega;
 protected:
     double _hbar;
 };
-Single_spin_half::Single_spin_half(int N_t, double tau, int dim_para, double hbar) :
-    Deng::GOAT::Hamiltonian<std::complex<double> > (2, N_t, tau, dim_para), omega(2.0*Pi/tau), _hbar(hbar)
+Single_spin_half::Single_spin_half(int N_t, real tau, int dim_para, real hbar) :
+    Deng::GOAT::Hamiltonian<elementtype, real> (2, N_t, tau, dim_para), omega(2.0*Pi/tau), _hbar(hbar)
     //2 for the dimension of spin half system
 {
     S.set_size(3);
@@ -57,9 +61,9 @@ Single_spin_half::Single_spin_half(int N_t, double tau, int dim_para, double hba
     S[2](1, 1) = -1;
     S = 0.5*_hbar*S;//Eq 3.2
 }
-Deng::Col_vector<double> Single_spin_half::B (double t) const
+Deng::Col_vector<real> Single_spin_half::B (real t) const
 {
-    Deng::Col_vector<double> B_field(3);
+    Deng::Col_vector<real> B_field(3);
 
     //rotating B field
     B_field[0] = cos(omega*t)*B_x_max;
@@ -68,7 +72,7 @@ Deng::Col_vector<double> Single_spin_half::B (double t) const
 
     return B_field;
 }
-Deng::Col_vector<double> Single_spin_half::control_field(double t) const
+Deng::Col_vector<real> Single_spin_half::control_field(real t) const
 {
 //    //Berry transitionless field
 //    Deng::Col_vector<double> dB(3);
@@ -88,7 +92,7 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
 //    Ctrl = 1/(B_field^B_field)*Ctrl;
 //    //Ctrl = 0.5 * Ctrl;
 
-    Deng::Col_vector<double> ctrl(3);
+    Deng::Col_vector<real> ctrl(3);
     ctrl[0] = 0.0;
     ctrl[1] = 0.0;
     ctrl[2] = parameters[0];
@@ -109,9 +113,9 @@ Deng::Col_vector<double> Single_spin_half::control_field(double t) const
 
     return ctrl;
 }
-Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(double t) const
+Deng::Col_vector<arma::Mat<elementtype>> Single_spin_half::Dynamics(real t) const
 {
-    Deng::Col_vector<arma::Mat<std::complex<double> > > iH_and_partial_H(_dim_para + 1);
+    Deng::Col_vector<arma::Mat<elementtype>> iH_and_partial_H(_dim_para + 1);
 
     iH_and_partial_H[0] = (-imag_i/_hbar)*((B(t) + control_field(t))^S);
 
@@ -120,7 +124,7 @@ Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(d
 		//could be generalize?
 		//double original_para = parameters[i];
 		parameters[i-1] += 0.01;
-		Deng::Col_vector<double> partial_control = control_field(t);
+		Deng::Col_vector<real> partial_control = control_field(t);
 		parameters[i-1] -= 0.01;
 		partial_control = (1/0.01)*(partial_control - control_field(t));
 
@@ -131,8 +135,6 @@ Deng::Col_vector<arma::Mat<std::complex<double> > > Single_spin_half::Dynamics(d
 }
 
 
-
-typedef double real;
 class GOAT_Target : public Deng::Optimization::Target_function<real>
 {
 public:
@@ -147,21 +149,21 @@ public:
     {
         assert(false && "Higher order derivatives are not known!");
     };
-    Deng::GOAT::RK4<std::complex<real> > *RK_pt;
+    Deng::GOAT::RK4<elementtype, real> *RK_pt;
     //Deng::GOAT::Hamiltonian<std::complex<real> > *H_only_pt;
-    Deng::GOAT::Hamiltonian<std::complex<real> > *H_and_partial_H_pt;
+    Deng::GOAT::Hamiltonian<elementtype, real> *H_and_partial_H_pt;
 
     //GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_only_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
-	GOAT_Target(Deng::GOAT::RK4<std::complex<real> > *input_RK_pt, Deng::GOAT::Hamiltonian<std::complex<real> > *input_H_and_partial_H_pt)
+	GOAT_Target(Deng::GOAT::RK4<elementtype, real> *input_RK_pt, Deng::GOAT::Hamiltonian<elementtype, real> *input_H_and_partial_H_pt)
     {
         RK_pt = input_RK_pt;
         H_and_partial_H_pt = input_H_and_partial_H_pt;
     }
-    virtual void Set_Controlled_Unitary_Matrix(const arma::Mat<std::complex<double> > &matrix_desired)
+    virtual void Set_Controlled_Unitary_Matrix(const arma::Mat<elementtype> &matrix_desired)
     {
         unitary_goal = matrix_desired;
     };
-    arma::Mat<std::complex<double> > unitary_goal;
+    arma::Mat<elementtype> unitary_goal;
 
 };
 real GOAT_Target::function_value(const arma::Col<real>& coordinate_given)
@@ -215,23 +217,23 @@ int main(int argc, char** argv)
 
     Single_spin_half H_only(N_t, tau, 0);
     Single_spin_half H_and_partial_H(N_t, tau, dim_para);
-    Deng::GOAT::RK4<std::complex<double> > RungeKutta;
+    Deng::GOAT::RK4<elementtype, real> RungeKutta;
 
     //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
 	GOAT_Target target(&RungeKutta, &H_and_partial_H);
 
 
-    arma::Col<double> eigval_0;
-    arma::Mat<std::complex<double> > eigvec_0;
-    arma::Mat<std::complex<double> > H_0 = H_and_partial_H.B(0)^ H_and_partial_H.S;
+    arma::Col<real> eigval_0;
+    arma::Mat<elementtype> eigvec_0;
+    arma::Mat<elementtype> H_0 = H_and_partial_H.B(0)^ H_and_partial_H.S;
     arma::eig_sym(eigval_0  , eigvec_0  , H_0  );
 
-    arma::Col<double> eigval_tau;
-    arma::Mat<std::complex<double> > eigvec_tau;
-    arma::Mat<std::complex<double> >H_tau = H_and_partial_H.B(tau)^ H_and_partial_H.S;
+    arma::Col<real> eigval_tau;
+    arma::Mat<elementtype> eigvec_tau;
+    arma::Mat<elementtype>H_tau = H_and_partial_H.B(tau)^ H_and_partial_H.S;
     arma::eig_sym(eigval_tau, eigvec_tau, H_tau);
 
-    arma::Mat<std::complex<double> > unitary_goal = eigvec_0;
+    arma::Mat<elementtype> unitary_goal = eigvec_0;
     unitary_goal.zeros();
 
 	std::cout << eigvec_0 << eigvec_tau << std::endl;
@@ -246,13 +248,13 @@ int main(int argc, char** argv)
     //arma::Col<double> position(dim_para, arma::fill::zeros);
     //std::cout << target.negative_gradient(position, aa) << std::endl;
 
-    Deng::Optimization::Min_Conj_Grad<double> Conj_Grad(dim_para, epsilon, max_iteration);
+    Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, max_iteration);
 
 
     Conj_Grad.Assign_Target_Function(&target);
-    Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<double>;
+    Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	arma::arma_rng::set_seed(time(nullptr));
-	arma::Col<double> start(dim_para, arma::fill::randu);
+	arma::Col<real> start(dim_para, arma::fill::randu);
 	start = start - 1;
     start = Conj_Grad.Conj_Grad_Search(start);
 
