@@ -29,6 +29,7 @@ class Single_spin_half : public Deng::GOAT::Hamiltonian<elementtype, real>
     friend class Deng::GOAT::RK4<elementtype, real>;
 public:
     virtual Deng::Col_vector<arma::Mat<elementtype>> Dynamics(real t) const override;
+	virtual arma::Mat<elementtype> Single_spin_half::Dynamics_U(real t) const override;
     //Pauli matrix, magnetic field and its partial derivative wrt time
     Deng::Col_vector<arma::Mat<elementtype>> S;
     Deng::Col_vector<real> B(real t) const;
@@ -74,24 +75,6 @@ Deng::Col_vector<real> Single_spin_half::B (real t) const
 }
 Deng::Col_vector<real> Single_spin_half::control_field(real t) const
 {
-//    //Berry transitionless field
-//    Deng::Col_vector<double> dB(3);
-//    Deng::Col_vector<double> B_field(3);
-//    B_field = B(t);
-//    //derivative of B field
-//    dB[0] = -omega*sin(omega*t)*B_x_max;
-//    dB[1] =  omega*cos(omega*t)*B_y_max;
-//    dB[2] = 0;
-//
-//    Deng::Col_vector<double> Ctrl(3);
-//    //Eq. 3.8
-//    Ctrl[0] = B_field[1]*dB[2] - B_field[2]*dB[1];
-//    Ctrl[1] = B_field[2]*dB[0] - B_field[0]*dB[2];
-//    Ctrl[2] = B_field[0]*dB[1] - B_field[1]*dB[0];
-//    //Eq. 3.9
-//    Ctrl = 1/(B_field^B_field)*Ctrl;
-//    //Ctrl = 0.5 * Ctrl;
-
     Deng::Col_vector<real> ctrl(3);
     ctrl[0] = 0.0;
     ctrl[1] = 0.0;
@@ -117,7 +100,7 @@ Deng::Col_vector<arma::Mat<elementtype>> Single_spin_half::Dynamics(real t) cons
 {
     Deng::Col_vector<arma::Mat<elementtype>> iH_and_partial_H(_dim_para + 1);
 
-    iH_and_partial_H[0] = (-imag_i/_hbar)*((B(t) + control_field(t))^S);
+    iH_and_partial_H[0] = Dynamics_U(t);
 
 	for (unsigned int i = 1; i <= _dim_para; ++i)
 	{
@@ -132,6 +115,10 @@ Deng::Col_vector<arma::Mat<elementtype>> Single_spin_half::Dynamics(real t) cons
 	}
 
     return iH_and_partial_H;
+}
+arma::Mat<elementtype> Single_spin_half::Dynamics_U(real t) const
+{
+	return (-imag_i / _hbar)*((B(t) + control_field(t)) ^ S);
 }
 
 
@@ -149,7 +136,6 @@ int main(int argc, char** argv)
     const double epsilon = 0.01;
     const int max_iteration = 20;
 
-    Single_spin_half H_only(N_t, tau, 0);
     Single_spin_half H_and_partial_H(N_t, tau, dim_para);
     Deng::GOAT::RK4<elementtype, real> RungeKutta;
 

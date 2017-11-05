@@ -14,6 +14,9 @@ namespace Deng
     {
         template<typename Field, typename Parameter>
 		class RK4;
+
+		//template<typename Field, typename Parameter>
+		//class GOAT_Target_1st_order;
 		
 		//the abstract base class for (almost) all Hamiltonians using GOAT
         template <typename Field, typename Parameter>
@@ -26,26 +29,35 @@ namespace Deng
             const Parameter _tau;//total time
             const unsigned int _N_t;//# of time steps
             const unsigned int _N;//dimension of state space
+			//control parameters
+			//have to use double as the parameters are usually real
+			mutable arma::Col<Parameter> parameters;
         public:
-            //control parameters
-            //have to use double as the parameters are usually real
-            mutable arma::Col<Parameter> parameters;
             virtual void Update_parameters(arma::Col<Parameter> new_para) const
             {
                 parameters = new_para;
             };
             //input necessary parameters
             Hamiltonian(unsigned int N, unsigned int N_t, Parameter tau, unsigned int dim_para = 0);
-            //calculate the derivative of U in a block vector form
+            
+			//calculate the derivative of U and partial U in a block vector form
             virtual Deng::Col_vector<arma::Mat<Field>> Derivative (Deng::Col_vector<arma::Mat<Field> > position, unsigned int t_index, bool half_time) const;
             //invoked by member function Derivative; return H and partial_H in a block vector form
             //pure-virtual function, must be implemented in instances!!!!
             virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(Parameter t) const = 0;
-            //empty virtual destructor
+
+			//calculate the derivative of U only
+			virtual arma::Mat<Field> Derivative_U(arma::Mat<Field> position, unsigned int t_index, bool half_time) const;
+			//invoked by member function Derivative; return H only
+			//pure-virtual function, must be implemented in instances!!!!
+			virtual arma::Mat<Field> Dynamics_U(Parameter t) const = 0;
+            
+			
+			//empty virtual destructor
             virtual ~Hamiltonian() = default;
             //for RK4 and conjugate gradient to use the parameters
             friend class RK4<Field, Parameter>;
-            //friend class Conjugate_Gradient_Method;
+            //friend class GOAT_Target_1st_order<Field, Parameter>;
         };
 		
 		//RK4 specialized for GOAT
@@ -60,9 +72,14 @@ namespace Deng
 
             //initialize initial states and identity
             virtual void Prep_for_H(const Deng::GOAT::Hamiltonian<Field, Parameter> &H);
-            //we use the keyword const here to prevent changing H
+			//time evolution for U and partial U
             virtual void Evolve_one_step(const Deng::GOAT::Hamiltonian<Field, Parameter> &H, const unsigned int t_index);
             virtual void Evolve_to_final(const Deng::GOAT::Hamiltonian<Field, Parameter> &H);
+
+			//evolve U only
+			virtual void Prep_for_H_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H);
+			virtual void Evolve_one_step_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H, const unsigned int t_index);
+			virtual void Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H);
 
         };
 
@@ -101,7 +118,6 @@ namespace Deng
 
 		};
 		
-
     }
 }
 
