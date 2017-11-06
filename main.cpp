@@ -61,54 +61,67 @@ int main(int argc, char** argv)
 	
 	Deng::Col_vector<real> B_now = B;
 
+	Transverse_Ising H(num_spinor, N_t, tau, 9);
+
 	for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
 	{
-		arma::Mat<elementtype> interaction(dim_hamil, dim_hamil, arma::fill::zeros);
-		auto external_field = interaction;
-
-		//B_now = ((2 * (double)t_i) / N_t - 1.0)*B;
-		B_now[0] = B[0] * cos(0.5*Pi*(double)t_i / N_t);
-		B_now[0] = 0.0;
-		B_now[2] = B[2] * sin(0.5*Pi*(double)t_i / N_t);
-
-
-		for (unsigned int i = 0; i < (num_spinor - 1); ++i)
-		{
-			auto temp = i == 0 ? S[2] : S_identity;
-			for (unsigned int j = 1; j < num_spinor; ++j)
-			{
-				temp = arma::kron(temp, (j == i) || (j == i + 1) ? S[2] : S_identity);
-			}
-			interaction += temp;
-		}
-
-		//auto temp = S[2];
-		//for (unsigned int j = 1; j < num_spinor; ++j)
-		//{
-		//	temp = arma::kron(temp, j == (num_spinor - 1) ? S[2] : S_identity);
-		//}
-		//interaction += temp;
-
-		for (unsigned int i = 0; i < num_spinor; ++i)
-		{
-			auto temp_B = i == 0 ? B_now^S : S_identity;
-			for (unsigned int j = 1; j < num_spinor; ++j)
-			{
-				temp_B = arma::kron(temp_B, i == j ? B_now^S : S_identity);
-			}
-			external_field += temp_B;
-		}
-
 		arma::Col<real> eigen_energy(dim_hamil);
-		auto eigen_vector = interaction;
-		arma::eig_sym(eigen_energy, eigen_vector, interaction + external_field);
+		auto current_H = H.H_0(tau*(real)t_i / N_t);
+		auto eigen_vector = current_H;
+		eigen_vector.zeros();
+		arma::eig_sym(eigen_energy, eigen_vector, current_H);
 
-		//std::cout  << eigen_energy.t() << std::endl;
-		outputfile << eigen_energy.t();// << std::endl;
-
+		outputfile << eigen_energy.t();
 	}
+
+	//for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
+	//{
+	//	arma::Mat<elementtype> interaction(dim_hamil, dim_hamil, arma::fill::zeros);
+	//	auto external_field = interaction;
+
+	//	//B_now = ((2 * (double)t_i) / N_t - 1.0)*B;
+	//	B_now[0] = B[0] * cos(0.5*Pi*(double)t_i / N_t);
+	//	B_now[1] = 0.0;
+	//	B_now[2] = B[2] * sin(0.5*Pi*(double)t_i / N_t);
+
+
+	//	for (unsigned int i = 0; i < (num_spinor - 1); ++i)
+	//	{
+	//		auto temp = i == 0 ? S[2] : S_identity;
+	//		for (unsigned int j = 1; j < num_spinor; ++j)
+	//		{
+	//			temp = arma::kron(temp, (j == i) || (j == i + 1) ? S[2] : S_identity);
+	//		}
+	//		interaction += temp;
+	//	}
+
+	//	//auto temp = S[2];
+	//	//for (unsigned int j = 1; j < num_spinor; ++j)
+	//	//{
+	//	//	temp = arma::kron(temp, j == (num_spinor - 1) ? S[2] : S_identity);
+	//	//}
+	//	//interaction += temp;
+
+	//	for (unsigned int i = 0; i < num_spinor; ++i)
+	//	{
+	//		auto temp_B = i == 0 ? B_now^S : S_identity;
+	//		for (unsigned int j = 1; j < num_spinor; ++j)
+	//		{
+	//			temp_B = arma::kron(temp_B, i == j ? B_now^S : S_identity);
+	//		}
+	//		external_field += temp_B;
+	//	}
+
+	//	arma::Col<real> eigen_energy(dim_hamil);
+	//	auto eigen_vector = interaction;
+	//	arma::eig_sym(eigen_energy, eigen_vector, interaction + external_field);
+
+	//	//std::cout  << eigen_energy.t() << std::endl;
+	//	outputfile << eigen_energy.t();// << std::endl;
+
+	//}
 	
-	outputfile.close();
+	
 	
 
 
@@ -153,6 +166,9 @@ int main(int argc, char** argv)
 //	arma::Col<double> start(dim_para, arma::fill::randu);
 //	start = start - 1;
 //    start = Conj_Grad.Conj_Grad_Search(start);
+
+
+	outputfile.close();
 
     return 0;
 }
