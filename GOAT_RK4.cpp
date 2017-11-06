@@ -40,7 +40,7 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
 
     for(unsigned int i = 1; i <= _dim_para; ++i)
     {
-		//central equation of GOAT
+		//std::cout << iH_and_partial_H[i];
 		k[i] = iH_and_partial_H[i]*U[0] + iH_and_partial_H[0]*U[i];
     }
 
@@ -133,7 +133,7 @@ void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Fiel
 {
 	for (unsigned int i = 0; i < H._N_t; ++i)
 	{
-		Evolve_one_step(H, i);
+		Evolve_one_step_U(H, i);
 		current_state[0] = next_state[0];
 	}
 }

@@ -187,6 +187,7 @@ int main(int argc, char** argv)
 	arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<real> start(dim_para, arma::fill::randu);
 	start = start - 0.5;
+	std::cout << start.t() << std::endl;
 	start = Conj_Grad.Conj_Grad_Search(start);
 
 

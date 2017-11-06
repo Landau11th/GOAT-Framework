@@ -137,16 +137,28 @@ Deng::Col_vector<real> Transverse_Ising::control_field(real t) const
 	ctrl[1] = 0.0;
 	ctrl[2] = 0.0;
 
-	for (unsigned int i = 1; i < _dim_para; ++i)
+	unsigned int mode = 0;
+	unsigned int trig = 0;
+	unsigned int direction = 0;
+
+	for (unsigned int i = 0; i < _dim_para; ++i)
 	{
-		unsigned int mode = (i + 3) / 4;
-		if (((i - 1) % 4) <= 1)
+		
+		if (i < 3)
+			mode = 0;
+		else
+			mode = (i - 3) / 6 + 1;
+
+		trig = (i - 3) % 6;
+		direction = trig % 3;
+
+		if (trig < 3)
 		{
-			ctrl[(i - 1) % 2] += parameters[i] * sin(mode * 2 * Pi*t / _tau);
+			ctrl[direction] += parameters[i] * sin(mode * omega * t);
 		}
 		else
 		{
-			ctrl[(i - 1) % 2] += parameters[i] * cos(mode * 2 * Pi*t / _tau);
+			ctrl[direction] += parameters[i] * cos(mode * omega * t);
 		}
 
 	}
@@ -176,13 +188,13 @@ Deng::Col_vector<arma::Mat<elementtype> > Transverse_Ising::Dynamics(real t) con
 		parameters[i - 1] -= 0.01;
 		partial_control = (1 / 0.01)*(partial_control - control_field(t));
 
-		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S);
+		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S_total);
 	}
 
 	return iH_and_partial_H;
 }
 arma::Mat<elementtype> Transverse_Ising::Dynamics_U(real t) const
 {
-	return H_0(t) + H_control(t);
+	return (-imag_i / _hbar)*(H_0(t) + H_control(t));
 }
 

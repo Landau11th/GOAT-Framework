@@ -29,7 +29,6 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
     //or member or during an instantiation of the class template or member.
     this->coordinate = start_coordinate;
 
-
 	real function_value;
 	this->search_direction = this->f->negative_gradient(this->coordinate, function_value);
 
