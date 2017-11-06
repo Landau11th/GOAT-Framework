@@ -79,7 +79,7 @@ Transverse_Ising::Transverse_Ising(unsigned int num_spinor, unsigned int N_t, re
 	S_identity.zeros(2, 2);
 	S_identity(0, 0) = 1;
 	S_identity(1, 1) = 1;
-	std::cout << S_identity;
+	//std::cout << S_identity;
 	//S = 0.5*_hbar*S;//Eq 3.2
 	
 
@@ -125,7 +125,7 @@ Deng::Col_vector<real> Transverse_Ising::B(real t) const
 	//B_field[2] = sin(0.25*omega*t)*B_z_max;
 	B_field[0] = 0.0;// cos(0.25*omega*t)*B_x_max;
 	B_field[1] = 0.2;// B_y_max;
-	B_field[2] = sin(0.25*omega*t)*B_z_max;
+	B_field[2] = 0.5+ 0.1*t/_tau;//sin(0.25*omega*t)*B_z_max;
 
 	return B_field;
 }

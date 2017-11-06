@@ -66,10 +66,26 @@ int main(int argc, char** argv)
 	for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
 	{
 		arma::Col<real> eigen_energy(dim_hamil);
-		auto current_H = H.H_0(tau*(real)t_i / N_t);
+		auto current_H = H.H_0((tau*(double)t_i) / N_t);
 		auto eigen_vector = current_H;
+
 		eigen_vector.zeros();
 		arma::eig_sym(eigen_energy, eigen_vector, current_H);
+
+		if ((!current_H.has_nan()) && eigen_vector.has_nan())
+		{
+			std::cout << t_i << "th step eigen vectors has nan or inf!" << std::endl;
+		}
+
+
+
+		if (t_i < 100)
+		{
+			std::cout << "with prev: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
+			std::cout << "with next: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(60)) << "  ";
+			std::cout << "with self: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
+			std::cout << std::endl;
+		}
 
 		outputfile << eigen_energy.t();
 	}
