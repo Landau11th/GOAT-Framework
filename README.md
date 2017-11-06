@@ -34,3 +34,7 @@ Intel MKL could be used to boost the performance.
   
 20171030-16:05
 -may need to add Chebychev propagation for time evolution
+
+
+20171106-2347
+-x,y constant mag field are useless!
