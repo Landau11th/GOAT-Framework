@@ -70,22 +70,22 @@ int main(int argc, char** argv)
 		auto eigen_vector = current_H;
 
 		eigen_vector.zeros();
-		arma::eig_sym(eigen_energy, eigen_vector, current_H);
+		arma::eig_sym(eigen_energy, eigen_vector, current_H, "std");
 
-		if ((!current_H.has_nan()) && eigen_vector.has_nan())
+		if ((!current_H.has_nan()) && eigen_vector.has_nan() )
 		{
+			std::cout << arma::accu(arma::abs(current_H - current_H.t())) << "    ";
 			std::cout << t_i << "th step eigen vectors has nan or inf!" << std::endl;
+			std::cout << eigen_vector.col(58).has_nan() << eigen_vector.col(59).has_nan() << eigen_vector.col(60).has_nan() << std::endl;
 		}
 
-
-
-		if (t_i < 100)
-		{
-			std::cout << "with prev: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
-			std::cout << "with next: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(60)) << "  ";
-			std::cout << "with self: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
-			std::cout << std::endl;
-		}
+		//if (t_i < 100)
+		//{
+		//	std::cout << "with prev: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
+		//	std::cout << "with next: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(60)) << "  ";
+		//	std::cout << "with self: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
+		//	std::cout << std::endl;
+		//}
 
 		outputfile << eigen_energy.t();
 	}
