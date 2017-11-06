@@ -123,8 +123,8 @@ Deng::Col_vector<real> Transverse_Ising::B(real t) const
 	//B_field[0] = cos(0.25*omega*t)*B_x_max;
 	//B_field[1] = B_y_max;
 	//B_field[2] = sin(0.25*omega*t)*B_z_max;
-	B_field[0] = 0.0;// cos(0.25*omega*t)*B_x_max;
-	B_field[1] = 0.2;// B_y_max;
+	B_field[0] = 0.5;// cos(0.25*omega*t)*B_x_max;
+	B_field[1] = 0.0;// B_y_max;
 	B_field[2] = B_z_max*t/_tau;//sin(0.25*omega*t)*B_z_max;
 
 	return B_field;

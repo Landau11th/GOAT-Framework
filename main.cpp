@@ -11,38 +11,39 @@
 
 #include "transverse_Ising.hpp"
 
-int main(int argc, char** argv)
-{
-//    const int N_t = 2000;
-//    const double tau = 3.0;
-//    const int dim_para = std::stoi(argv[1]);
-    const double hbar = 1.0;
-//
-//    const double epsilon = 0.01;
-//    const int max_iteration = 20;
-//
-//    Single_spin_half H_only(N_t, tau, 0);
-//    Single_spin_half H_and_partial_H(N_t, tau, dim_para);
-//    Deng::GOAT::RK4<std::complex<double> > RungeKutta;
-//
-//    //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
-//	GOAT_Target target(&RungeKutta, &H_and_partial_H);
 
-    Deng::Col_vector<arma::Mat<elementtype>> S(3);
-    S[0].zeros(2, 2);
-    S[0](0, 1) = 1;
-    S[0](1, 0) = 1;
-    S[1].zeros(2, 2);
-    S[1](0, 1) = -imag_i;
-    S[1](1, 0) = imag_i;
-    S[2].zeros(2, 2);
-    S[2](0, 0) = 1;
-    S[2](1, 1) = -1;
+void Verify_level_crossing()
+{
+	//    const int N_t = 2000;
+	//    const double tau = 3.0;
+	//    const int dim_para = std::stoi(argv[1]);
+	const double hbar = 1.0;
+	//
+	//    const double epsilon = 0.01;
+	//    const int max_iteration = 20;
+	//
+	//    Single_spin_half H_only(N_t, tau, 0);
+	//    Single_spin_half H_and_partial_H(N_t, tau, dim_para);
+	//    Deng::GOAT::RK4<std::complex<double> > RungeKutta;
+	//
+	//    //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
+	//	GOAT_Target target(&RungeKutta, &H_and_partial_H);
+
+	Deng::Col_vector<arma::Mat<elementtype>> S(3);
+	S[0].zeros(2, 2);
+	S[0](0, 1) = 1;
+	S[0](1, 0) = 1;
+	S[1].zeros(2, 2);
+	S[1](0, 1) = -imag_i;
+	S[1](1, 0) = imag_i;
+	S[2].zeros(2, 2);
+	S[2](0, 0) = 1;
+	S[2](1, 1) = -1;
 	arma::Mat<elementtype> S_identity;
 	S_identity.zeros(2, 2);
 	S_identity(0, 0) = 1;
 	S_identity(1, 1) = 1;
-    //S = 0.5*hbar*S;
+	//S = 0.5*hbar*S;
 
 	const unsigned int N_t = 1000;
 	const double tau = 3.0;
@@ -53,12 +54,12 @@ int main(int argc, char** argv)
 	//output to 
 	std::ofstream outputfile;
 	outputfile.open("eigenvalues.dat");
-		
+
 	Deng::Col_vector<real> B(3);
 	B[0] = 1.5;
 	B[1] = 0.2;
 	B[2] = 1.0;
-	
+
 	Deng::Col_vector<real> B_now = B;
 
 	Transverse_Ising H(num_spinor, N_t, tau, 9);
@@ -72,7 +73,7 @@ int main(int argc, char** argv)
 		eigen_vector.zeros();
 		arma::eig_sym(eigen_energy, eigen_vector, current_H, "std");
 
-		if ((!current_H.has_nan()) && eigen_vector.has_nan() )
+		if ((!current_H.has_nan()) && eigen_vector.has_nan())
 		{
 			std::cout << arma::accu(arma::abs(current_H - current_H.t())) << "    ";
 			std::cout << t_i << "th step eigen vectors has nan or inf!" << std::endl;
@@ -136,17 +137,57 @@ int main(int argc, char** argv)
 	//	outputfile << eigen_energy.t();// << std::endl;
 
 	//}
-	
-	
-	
-
 
 	//std::cout << interaction << std::endl;
 	//std::cout << arma::kron(S[0], S[1]) << std::endl;
 
+	outputfile.close();
+}
 
+int main(int argc, char** argv)
+{
+	//Verify_level_crossing();
+	
+	const unsigned int dim_para = std::stoi(argv[1]);
+	
+	
+	const unsigned int N_t = 1000;
+	const double tau = 1.0;
 
+	const unsigned int num_spinor = 6;
+	const unsigned int dim_hamil = 1 << num_spinor;
 
+	Transverse_Ising H(num_spinor, N_t, tau, 9);
+	Deng::GOAT::RK4<elementtype, real> RK;
+	Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RK, &H);
+	//Deng::Optimization::
+
+	arma::Mat<elementtype> unitary_goal(dim_hamil, dim_hamil, arma::fill::zeros);
+	{
+		arma::Col<real> eigval_0;
+		auto H_0 = H.H_0(0);
+		auto eigvec_0 = H_0;
+		arma::eig_sym(eigval_0, eigvec_0, H_0);
+
+		arma::Col<real> eigval_tau;
+		auto H_tau = H.H_0(tau);
+		auto eigvec_tau = H_tau;
+		arma::eig_sym(eigval_tau, eigvec_tau, H_tau);
+
+		for (unsigned int i = 0; i < dim_hamil; ++i)
+			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();
+	}
+
+	target.Set_Controlled_Unitary_Matrix(unitary_goal);
+
+	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-3, 100);
+
+	Conj_Grad.Assign_Target_Function(&target);
+	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
+	arma::arma_rng::set_seed(time(nullptr));
+	arma::Col<real> start(dim_para, arma::fill::randu);
+	start = start - 0.5;
+	start = Conj_Grad.Conj_Grad_Search(start);
 
 
 //    arma::Col<double> eigval_0;
@@ -182,9 +223,6 @@ int main(int argc, char** argv)
 //	arma::Col<double> start(dim_para, arma::fill::randu);
 //	start = start - 1;
 //    start = Conj_Grad.Conj_Grad_Search(start);
-
-
-	outputfile.close();
 
     return 0;
 }
