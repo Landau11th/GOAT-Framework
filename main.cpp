@@ -147,17 +147,16 @@ void Verify_level_crossing()
 int main(int argc, char** argv)
 {
 	//Verify_level_crossing();
-	
-	const unsigned int dim_para = std::stoi(argv[1]);
-	
+	const unsigned int num_spinor = std::stoi(argv[1]);
+	const unsigned int dim_hamil = 1 << num_spinor;
+	const unsigned int dim_para = std::stoi(argv[2]);
+
+	std::cout << num_spinor << ", " << dim_para << std::endl;
 	
 	const unsigned int N_t = 1000;
 	const double tau = 1.0;
 
-	const unsigned int num_spinor = 6;
-	const unsigned int dim_hamil = 1 << num_spinor;
-
-	Transverse_Ising H(num_spinor, N_t, tau, 9);
+	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
 	Deng::GOAT::RK4<elementtype, real> RK;
 	Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RK, &H);
 	//Deng::Optimization::
@@ -185,9 +184,10 @@ int main(int argc, char** argv)
 	Conj_Grad.Assign_Target_Function(&target);
 	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	arma::arma_rng::set_seed(time(nullptr));
-	arma::Col<real> start(dim_para, arma::fill::randu);
-	start = start - 0.5;
-	std::cout << start.t() << std::endl;
+	//arma::Col<real> start(dim_para, arma::fill::randu);
+	//start = start - 0.5;
+	//std::cout << start.t() << std::endl;
+	arma::Col<real> start(dim_para, arma::fill::zeros);
 	start = Conj_Grad.Conj_Grad_Search(start);
 
 

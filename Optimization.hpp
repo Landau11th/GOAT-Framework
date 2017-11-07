@@ -6,12 +6,12 @@
 #include <armadillo>
 #include <cassert>
 
+#include <ctime>
+
 namespace Deng
 {
 	namespace Optimization
 	{
-
-
 		template<typename real>
 		class Target_function
 		{

@@ -56,6 +56,9 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 			//break;
 		}
 
+		clock_t my_time;
+		my_time = clock();
+
 		this->coordinate = lambda*this->search_direction + this->coordinate;
 		previous_search_direction = this->search_direction;
 		this->search_direction = this->f->negative_gradient(this->coordinate, function_value);
@@ -64,6 +67,9 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 
 		std::cout << count_iteration << " th search stops at value: " << function_value << std::endl;
 		std::cout << "with coordinate: " << this->coordinate.t() << "\n\n";
+
+
+		std::cout << "calculating derivative costs " << 1000 * ((clock() - (float)my_time) / CLOCKS_PER_SEC) << " ms" << std::endl;
 
 	}
 	if (count_iteration >= this->_max_iteration)
