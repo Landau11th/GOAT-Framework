@@ -125,6 +125,12 @@ namespace Deng
 			//new function value. calculate the probabitlity and sum over.
 			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
 			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
+
+			virtual void Set_Initial_States(const arma::Mat<Field> &initial_states_desired)
+			{
+				initial_states = initial_states_desired;
+			};
+			arma::Mat<Field> initial_states;
 		};
 		
     }

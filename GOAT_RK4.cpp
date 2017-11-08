@@ -23,10 +23,7 @@ template <typename Field, typename Parameter>
 Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Deng::Col_vector<arma::Mat<Field>> U, unsigned int t_index, bool half_time) const
 {
     Parameter shift = half_time ? 0.5 : 0.0;
-    // if(half_time)
-        // shift = 0.5;
-    // else
-        // shift = 0;//0 or 1???
+	//0 or 1???
 	
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
@@ -208,7 +205,7 @@ Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const
 	//negative_gradient(coordinate_given, value);
 	////std::cout << value << std::endl;
 	arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
-	auto UU_diag = arma::diagvec(unitary_goal.t()*RK_pt->next_state[0]);
+	auto UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
 	
 	//std::cout << arma::as_scalar(UU_diag.t()*UU_diag) << std::endl;
 	return -arma::as_scalar(UU_diag.t()*UU_diag).real();
@@ -223,7 +220,9 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 	
 	//give function value
 	//DO NOT USE auto here. It causes error. Reason is unknown
-	arma::Col<Field> UU_diag = arma::diagvec(unitary_goal.t()*RK_pt->next_state[0]);
+	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
+	//auto UU_diag = arma::diagvec(unitary_goal.t()*RK_pt->next_state[0]);
+
 	Field trace_of_UUUU = arma::as_scalar(UU_diag.t()*UU_diag).real();
 	function_value = -trace_of_UUUU.real();
 	
@@ -233,7 +232,7 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 
 	for (unsigned int i = 0; i < gradient.n_elem; ++i)
 	{
-		arma::Col<Field> UpartialU_diag = -arma::diagvec(unitary_goal.t()*RK_pt->next_state[i+1]);
+		arma::Col<Field> UpartialU_diag = -arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[i+1] * initial_states);
 		gradient[i] = 2.0*arma::as_scalar(UU_diag.t()*UpartialU_diag).real();
 	}
 

@@ -11,6 +11,101 @@
 
 #include "transverse_Ising.hpp"
 
+void Verify_level_crossing();
+
+int main(int argc, char** argv)
+{
+	//Verify_level_crossing();
+	const unsigned int num_spinor = std::stoi(argv[1]);
+	const unsigned int dim_hamil = 1 << num_spinor;
+	const unsigned int dim_para = std::stoi(argv[2]);
+	const bool rand = std::stoi(argv[3]) ? true : false;
+
+	std::cout << num_spinor << ", " << dim_para << ", " << rand << std::endl;
+	
+	const unsigned int N_t = 1000;
+	const double tau = 1.0;
+
+	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
+	Deng::GOAT::RK4<elementtype, real> RK;
+
+	//RK.Prep_for_H_U(H);
+	//RK.Evolve_to_final_U(H);
+	//std::cout << RK.next_state[0];
+	//const std::complex<real> ttt( 1 + num_spinor*H.B_z_max - num_spinor, 0.0);
+	//std::cout << std::exp(-ttt*imag_i);
+
+	//set up target function
+	//Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RK, &H);
+	Deng::GOAT::GOAT_Target_1st_order_no_phase<elementtype, real> target(&RK, &H);
+	//determine the target unitary matrix
+	arma::Mat<elementtype> unitary_goal(dim_hamil, dim_hamil, arma::fill::zeros);
+	{
+		arma::Col<real> eigval_0;
+		auto H_0 = H.H_0(0);
+		auto eigvec_0 = H_0;
+		arma::eig_sym(eigval_0, eigvec_0, H_0, "std");
+		
+		//std::cout << H_0 << std::endl;
+		//std::cout << eigval_0 << std::endl;
+		//std::cout << eigvec_0 << std::endl;
+
+		arma::Col<real> eigval_tau;
+		auto H_tau = H.H_0(tau);
+		auto eigvec_tau = H_tau;
+		arma::eig_sym(eigval_tau, eigvec_tau, H_tau, "std");
+
+		//std::cout << H_tau << std::endl;
+		//std::cout << eigval_tau << std::endl;
+		//std::cout << eigvec_tau << std::endl;
+
+		for (unsigned int i = 0; i < dim_hamil; ++i)
+		{
+			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();			
+		}
+		target.Set_Initial_States(eigvec_0);
+	}
+	target.Set_Controlled_Unitary_Matrix(unitary_goal);
+	
+
+
+
+	//set up Conjugate gradient method for searching minimum
+	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-3, 100);
+	//appoint target function
+	Conj_Grad.Assign_Target_Function(&target);
+	//appoint the 1D search method
+	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
+	
+	//generate initial coordinate to start
+	arma::arma_rng::set_seed(time(nullptr));
+	arma::Col<real> start(dim_para, arma::fill::randu);
+	start = start - 0.5;
+	if (!rand)
+		start.zeros();
+
+	//start conj grad search
+	start = Conj_Grad.Conj_Grad_Search(start);
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void Verify_level_crossing()
 {
@@ -142,60 +237,4 @@ void Verify_level_crossing()
 	//std::cout << arma::kron(S[0], S[1]) << std::endl;
 
 	outputfile.close();
-}
-
-int main(int argc, char** argv)
-{
-	//Verify_level_crossing();
-	const unsigned int num_spinor = std::stoi(argv[1]);
-	const unsigned int dim_hamil = 1 << num_spinor;
-	const unsigned int dim_para = std::stoi(argv[2]);
-
-	std::cout << num_spinor << ", " << dim_para << std::endl;
-	
-	const unsigned int N_t = 1000;
-	const double tau = 1.0;
-
-	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
-	Deng::GOAT::RK4<elementtype, real> RK;
-	//set up target function
-	//Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RK, &H);
-	Deng::GOAT::GOAT_Target_1st_order_no_phase<elementtype, real> target(&RK, &H);
-	//determine the target unitary matrix
-	arma::Mat<elementtype> unitary_goal(dim_hamil, dim_hamil, arma::fill::zeros);
-	{
-		arma::Col<real> eigval_0;
-		auto H_0 = H.H_0(0);
-		auto eigvec_0 = H_0;
-		arma::eig_sym(eigval_0, eigvec_0, H_0);
-
-		arma::Col<real> eigval_tau;
-		auto H_tau = H.H_0(tau);
-		auto eigvec_tau = H_tau;
-		arma::eig_sym(eigval_tau, eigvec_tau, H_tau);
-
-		for (unsigned int i = 0; i < dim_hamil; ++i)
-			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();
-	}
-	target.Set_Controlled_Unitary_Matrix(unitary_goal);
-
-	//set up Conjugate gradient method for searching minimum
-	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-3, 100);
-	//appoint target function
-	Conj_Grad.Assign_Target_Function(&target);
-	//appoint the 1D search method
-	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
-	
-	//generate initial coordinate to start
-	arma::arma_rng::set_seed(time(nullptr));
-	arma::Col<real> start(dim_para, arma::fill::randu);
-	start = start - 0.5;
-	//arma::Col<real> start(dim_para, arma::fill::zeros);
-
-	//std::cout << target.function_value(start);
-
-	//start conj grad search
-	start = Conj_Grad.Conj_Grad_Search(start);
-
-    return 0;
 }
