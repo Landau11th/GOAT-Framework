@@ -79,7 +79,7 @@ Deng::Col_vector<real> Transverse_Ising::B(real t) const
 	//B_field[2] = sin(0.25*omega*t)*B_z_max;
 	B_field[0] = B_x_max;// cos(0.25*omega*t)*B_x_max;
 	B_field[1] = 0.0;// B_y_max;
-	B_field[2] = B_z_max;// B_z_max*t / _tau;//sin(0.25*omega*t)*B_z_max;
+	B_field[2] = B_z_max*t / _tau;//sin(0.25*omega*t)*B_z_max;
 
 	return B_field;
 }
@@ -100,8 +100,8 @@ Deng::Col_vector<real> Transverse_Ising::control_field(real t) const
 		mode = i < 1 ? 0 : (i - 1) / 6 + 1;
 		trig = (i - 1) % 6;
 		direction = trig % 3;
-
-		ctrl[direction] += trig < 3 ? parameters[i] * sin(mode * omega * t) : parameters[i] * cos(mode * omega * t);
+		//-1 make the field vanishes at 0 and tau
+		ctrl[direction] += trig < 3 ? parameters[i] * sin(mode * omega * t) : parameters[i] * (cos(mode * omega * t) - 1);
 	}
 	return ctrl;
 }

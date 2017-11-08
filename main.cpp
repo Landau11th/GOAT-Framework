@@ -22,7 +22,9 @@ int main(int argc, char** argv)
 	const unsigned int dim_para = std::stoi(argv[2]);
 	const bool rand = std::stoi(argv[3]) ? true : false;
 
-	std::cout << num_spinor << ", " << dim_para << ", " << rand << std::endl;
+	std::cout << "Number of spin: " << num_spinor << std::endl;
+	std::cout << "Dim of Paramateric space: " << dim_para << std::endl;
+	std::cout << "start with " << (rand? "random location" : "0")<< std::endl << std::endl << std::endl;
 	
 	const unsigned int N_t = 1000;
 	const real tau = 1.0;
@@ -81,7 +83,8 @@ int main(int argc, char** argv)
 	//generate initial coordinate to start
 	arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<real> start(dim_para, arma::fill::randu);
-	start = start - 0.5;
+	//how wide the initial coordinate we choose
+	start = 4.0*(start - 0.5);
 	if (!rand)
 		start.zeros();
 
@@ -109,17 +112,20 @@ int main(int argc, char** argv)
 			shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
 
 			real temp_func_value = target.function_value(current_min_coordinate + shift);
-			
+
 			if (temp_func_value < current_min)
 			{
 				//this minimum is only a stationary point
 				is_stationary = true;
 				start = current_min_coordinate + shift;
-				std::cout << "\n\n\n";
+				std::cout << "\n\nNot a minimum\n";
 
 				break;
 			}
 		}
+
+		if (!is_stationary)
+			std::cout << "\nReach (local) minimum" << std::endl;
 	}
 
 
