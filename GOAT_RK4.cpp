@@ -135,7 +135,7 @@ void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Fiel
 {
 	for (unsigned int i = 0; i < H._N_t; ++i)
 	{
-		Evolve_one_step_U(H, i);
+		Evolve_one_step(H, i);
 		current_state[0] = next_state[0];
 	}
 }
@@ -187,15 +187,6 @@ arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(
 		gradient[i] = trace_of_unitary.real();
 	}
 	return -gradient;
-}
-template <typename Field, typename Parameter>
-void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H)
-{
-	for (unsigned int i = 0; i < H._N_t; ++i)
-	{
-		Evolve_one_step(H, i);
-		current_state[0] = next_state[0];
-	}
 }
 
 
