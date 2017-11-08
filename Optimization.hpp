@@ -69,6 +69,8 @@ namespace Deng
 		public:
 			//search directions
 			mutable arma::Col<real> search_direction;
+			//may need a variable to record current minimum
+			//real current_min = nan;
 
 			//using Min_Know_Function<real>::Min_Know_Function;
 			//omit the default constructor.

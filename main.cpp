@@ -25,7 +25,10 @@ int main(int argc, char** argv)
 	std::cout << num_spinor << ", " << dim_para << ", " << rand << std::endl;
 	
 	const unsigned int N_t = 1000;
-	const double tau = 1.0;
+	const real tau = 1.0;
+	const real epsilon = 1E-4;
+	const real epsilon_gradient = 1E-4;
+
 
 	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
 	Deng::GOAT::RK4<elementtype, real> RK;
@@ -68,9 +71,8 @@ int main(int argc, char** argv)
 	}
 	target.Set_Controlled_Unitary_Matrix(unitary_goal);
 
-  
 	//set up Conjugate gradient method for searching minimum
-	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-4, 100, 1E-4);
+	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, 100, epsilon_gradient);
 	//appoint target function
 	Conj_Grad.Assign_Target_Function(&target);
 	//appoint the 1D search method
@@ -83,14 +85,43 @@ int main(int argc, char** argv)
 	if (!rand)
 		start.zeros();
 
-	start = Conj_Grad.Conj_Grad_Search(start);
+	
+	bool is_stationary = true;
 
-	////start conj grad search
-	//for(int i = 0; i <= 10; ++i)
-	//{
-	//	start = Conj_Grad.Conj_Grad_Search(start);
-	//	arma::Col<real> shift(dim_para, arma::fill::randu);
-	//}
+	while (is_stationary)
+	{
+		//redundant calculation...
+		auto current_min_coordinate = Conj_Grad.Conj_Grad_Search(start);
+		auto current_min_previous_search_direction = Conj_Grad.previous_search_direction;
+		auto current_min = target.function_value(current_min_coordinate);
+		
+		
+		is_stationary = false;
+		//move the coordinate around
+		//to see if it is only a stationary point
+		for (int i = 0; i < 2*dim_hamil; ++i)
+		{
+			//randomly pick a direction
+			arma::Col<real> shift(dim_para, arma::fill::randu);
+			auto temp_search_direction = Conj_Grad.previous_search_direction;
+			real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
+			shift = sqrt(scale)*shift;
+			shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
+
+			real temp_func_value = target.function_value(current_min_coordinate + shift);
+			
+			if (temp_func_value < current_min)
+			{
+				//this minimum is only a stationary point
+				is_stationary = true;
+				start = current_min_coordinate + shift;
+				std::cout << "\n\n\n";
+
+				break;
+			}
+		}
+	}
+
 
     return 0;
 }
