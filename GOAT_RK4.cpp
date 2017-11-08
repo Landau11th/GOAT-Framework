@@ -23,10 +23,8 @@ template <typename Field, typename Parameter>
 Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Deng::Col_vector<arma::Mat<Field>> U, unsigned int t_index, bool half_time) const
 {
     Parameter shift = half_time ? 0.5 : 0.0;
-    // if(half_time)
-        // shift = 0.5;
-    // else
-        // shift = 0;//0 or 1???
+    //0 or 1???
+
 	
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
@@ -40,6 +38,7 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
 
     for(unsigned int i = 1; i <= _dim_para; ++i)
     {
+		//std::cout << iH_and_partial_H[i];
 		//central equation of GOAT
 		k[i] = iH_and_partial_H[i]*U[0] + iH_and_partial_H[0]*U[i];
     }
@@ -58,9 +57,8 @@ arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(arma::Mat<Field> po
 	//need to test the data type
 	Parameter t = (t_index + shift)*_dt;
 
-
 	arma::Mat<Field> iH = Dynamics_U(t);
-
+  
 	return iH*position;
 
 }
@@ -68,6 +66,9 @@ arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(arma::Mat<Field> po
 
 
 
+//realization of Runge Kutta 4th order method
+//specialized for GOAT
+//could be used for general matrix evolution after some adaption
 template class Deng::GOAT::RK4<float , float >;
 template class Deng::GOAT::RK4<double, double>;
 template class Deng::GOAT::RK4<std::complex<float> , float >;
@@ -109,7 +110,8 @@ void RK4<Field, Parameter>::Evolve_to_final(const Deng::GOAT::Hamiltonian<Field,
         current_state = next_state;
     }
 }
-
+//evolve U only
+//for performance when calculating function value only
 template <typename Field, typename Parameter>
 void RK4<Field, Parameter>::Prep_for_H_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H)
 {
@@ -133,17 +135,18 @@ void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Fiel
 {
 	for (unsigned int i = 0; i < H._N_t; ++i)
 	{
-		Evolve_one_step(H, i);
+		Evolve_one_step_U(H, i);
 		current_state[0] = next_state[0];
 	}
 }
 
 
 
-
+//realization of Deng::GOAT::GOAT_Target_1st_order
+//target function gives the overlap of target U and U under certain control
+//the phase must be exact
 template class Deng::GOAT::GOAT_Target_1st_order<std::complex<float>, float >;
 template class Deng::GOAT::GOAT_Target_1st_order<std::complex<double>, double>;
-
 
 template<typename Field, typename Parameter>
 Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given)
@@ -183,6 +186,68 @@ arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(
 		//trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
 		gradient[i] = trace_of_unitary.real();
 	}
+	return -gradient;
+}
+template <typename Field, typename Parameter>
+void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H)
+{
+	for (unsigned int i = 0; i < H._N_t; ++i)
+	{
+		Evolve_one_step(H, i);
+		current_state[0] = next_state[0];
+	}
+}
+
+
+
+//realization of Deng::GOAT::GOAT_Target_1st_order
+//target function gives the overlap of target U up to a phase factor and U under certain control
+//the phase could be arbitrary
+template class Deng::GOAT::GOAT_Target_1st_order_no_phase<std::complex<float>, float >;
+template class Deng::GOAT::GOAT_Target_1st_order_no_phase<std::complex<double>, double>;
+
+template<typename Field, typename Parameter>
+Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given)
+{
+	H_and_partial_H_pt->Update_parameters(coordinate_given);
+	RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
+	RK_pt->Evolve_to_final_U(*H_and_partial_H_pt);
+
+	//Parameter value;
+	//negative_gradient(coordinate_given, value);
+	////std::cout << value << std::endl;
+	arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
+	auto UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
+	
+	//std::cout << arma::as_scalar(UU_diag.t()*UU_diag) << std::endl;
+	return -arma::as_scalar(UU_diag.t()*UU_diag).real();
+
+}
+template<typename Field, typename Parameter>
+arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value)
+{
+	H_and_partial_H_pt->Update_parameters(coordinate_given);
+	RK_pt->Prep_for_H(*H_and_partial_H_pt);
+	RK_pt->Evolve_to_final(*H_and_partial_H_pt);
+
+	//give function value
+	//DO NOT USE auto here. It causes error. Reason is unknown
+	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
+	//auto UU_diag = arma::diagvec(unitary_goal.t()*RK_pt->next_state[0]);
+
+	Field trace_of_UUUU = arma::as_scalar(UU_diag.t()*UU_diag).real();
+	function_value = -trace_of_UUUU.real();
+	
+	//calc gradient
+	arma::Col<Parameter> gradient = coordinate_given;
+	gradient.zeros();
+
+	for (unsigned int i = 0; i < gradient.n_elem; ++i)
+	{
+		arma::Col<Field> UpartialU_diag = -arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[i+1] * initial_states);
+		gradient[i] = 2.0*arma::as_scalar(UU_diag.t()*UpartialU_diag).real();
+	}
 
 	return -gradient;
 }
+

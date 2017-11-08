@@ -115,7 +115,22 @@ namespace Deng
 				unitary_goal = matrix_desired;
 			};
 			arma::Mat<Field> unitary_goal;
+		};
 
+		template<typename Field, typename Parameter>
+		class GOAT_Target_1st_order_no_phase : public Deng::GOAT::GOAT_Target_1st_order<Field, Parameter>
+		{
+		public:
+			using GOAT_Target_1st_order::GOAT_Target_1st_order;
+			//new function value. calculate the probabitlity and sum over.
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
+
+			virtual void Set_Initial_States(const arma::Mat<Field> &initial_states_desired)
+			{
+				initial_states = initial_states_desired;
+			};
+			arma::Mat<Field> initial_states;
 		};
 		
     }
