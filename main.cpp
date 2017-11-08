@@ -70,7 +70,7 @@ int main(int argc, char** argv)
 
   
 	//set up Conjugate gradient method for searching minimum
-	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-3, 100);
+	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-4, 100, 1E-4);
 	//appoint target function
 	Conj_Grad.Assign_Target_Function(&target);
 	//appoint the 1D search method
@@ -83,8 +83,14 @@ int main(int argc, char** argv)
 	if (!rand)
 		start.zeros();
 
-	//start conj grad search
 	start = Conj_Grad.Conj_Grad_Search(start);
+
+	////start conj grad search
+	//for(int i = 0; i <= 10; ++i)
+	//{
+	//	start = Conj_Grad.Conj_Grad_Search(start);
+	//	arma::Col<real> shift(dim_para, arma::fill::randu);
+	//}
 
     return 0;
 }

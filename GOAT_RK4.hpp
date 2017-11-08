@@ -89,14 +89,14 @@ namespace Deng
 		class GOAT_Target_1st_order : public Deng::Optimization::Target_function<Parameter>
 		{
 		public:
-			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
-			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
-			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient)
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) const override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const override;
+			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient) const override
 			{
 				assert(false && "Hessian is not known for class GOAT_Target_1st_order!\n");
 				return 0;
 			};
-			virtual void higher_order(const arma::Col<Parameter>& coordinate_given, const Parameter order)
+			virtual void higher_order(const arma::Col<Parameter>& coordinate_given, const Parameter order) const override
 			{
 				assert(false && "Higher order derivatives are not known for class GOAT_Target_1st_order!\n");
 			};
@@ -123,8 +123,8 @@ namespace Deng
 		public:
 			using GOAT_Target_1st_order::GOAT_Target_1st_order;
 			//new function value. calculate the probabitlity and sum over.
-			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
-			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) const override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const override;
 
 			virtual void Set_Initial_States(const arma::Mat<Field> &initial_states_desired)
 			{

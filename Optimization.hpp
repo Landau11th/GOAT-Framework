@@ -21,10 +21,10 @@ namespace Deng
 			//every pure virtual function must be defined
 			//if certain function is unknown, one could define it as final and use assert in the body
 			//example is given below. search "//Target_function example"
-			virtual real function_value(const arma::Col<real>& coordinate_given) = 0;
-			virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) = 0;
-			virtual arma::Mat<real> Hessian(const arma::Col<real>& coordinate_given, real &function_value, arma::Col<real> &negative_gradient) = 0;
-			virtual void higher_order(const arma::Col<real>& coordinate_given, const real order) = 0;
+			virtual real function_value(const arma::Col<real>& coordinate_given) const = 0;
+			virtual arma::Col<real> negative_gradient(const arma::Col<real>& coordinate_given, real &function_value) const = 0;
+			virtual arma::Mat<real> Hessian(const arma::Col<real>& coordinate_given, real &function_value, arma::Col<real> &negative_gradient) const = 0;
+			virtual void higher_order(const arma::Col<real>& coordinate_given, const real order) const = 0;
 			virtual ~Target_function() = default;
 		};
 
@@ -38,7 +38,7 @@ namespace Deng
 			unsigned int _max_iteration;
 			//must know the target function
 			//since the target function could be very complex, I prefer to write it as a class, rather than just a function pointer
-			Target_function<real> *f;
+			mutable Target_function<real> *f;
 		public:
 			//coordinate in parametric space
 			//suppose to store the initial coordinate, and the final optimized parameters
@@ -51,7 +51,7 @@ namespace Deng
 				f = nullptr;
 			};
 			//f is Deng::Optimization::Target_function<real>
-			virtual void Assign_Target_Function(Target_function<real> *pt_f)
+			virtual void Assign_Target_Function(Target_function<real> *pt_f) const
 			{
 				f = pt_f;
 			};
@@ -64,20 +64,17 @@ namespace Deng
 		template<typename real>
 		class Min_Know_Gradient : public Min_Know_Function<real>
 		{
+		protected:
+			real _epsilon_gradient;
 		public:
 			//search directions
 			mutable arma::Col<real> search_direction;
 
-			//Target_function<real>* f;
-			////to cover the defination of Assign_Target_Function in Deng::Optimization::Know_Function::Minimization<real>
-			////mainly because we want f points to Deng::Optimization::Know_Gradient::Target_function
-			////THIS MIGHT BE DANGEROUS!!!!!
-			//void Assign_Target_Function(Target_function<real>* pt_f) { f = pt_f; };
-
 			//using Min_Know_Function<real>::Min_Know_Function;
 			//omit the default constructor.
 			//Must know the parameters before declare this object
-			Min_Know_Gradient(unsigned int dim_para, real epsilon, unsigned int max_iteration) : Min_Know_Function<real>(dim_para, epsilon, max_iteration)
+			Min_Know_Gradient(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient) 
+				: Min_Know_Function<real>(dim_para, epsilon, max_iteration), _epsilon_gradient(epsilon_gradient)
 			{
 				search_direction = arma::zeros<arma::Col<real> >(dim_para);
 			};
@@ -94,31 +91,30 @@ namespace Deng
 			mutable arma::Col<real> previous_search_direction;
 			//constructor
 			//using Min_Know_Gradient<real>::Min_Know_Gradient;
-			Min_Conj_Grad(unsigned int dim_para, real epsilon, unsigned int max_iteration) : Min_Know_Gradient<real>(dim_para, epsilon, max_iteration)
+			//value of _epsilon and _epsilon_gradient implicitly assume the scale of the space
+			Min_Conj_Grad(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient) 
+				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
 			{
 				previous_search_direction = arma::zeros<arma::Col<real> >(dim_para);
 			};
 
 			//Here I implicitly assume the format of the 1D optimization function!!!!!!
-			real(*Opt_1D)(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, Target_function<real> *f, const unsigned int max_iteration, const real epsilon);
+			real(*Opt_1D)(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon);
 
 			//if not giving a start coordinate, we start from 0
-			virtual arma::Col<real> Conj_Grad_Search(arma::Col<real> start_coordinate = 0) const;
-			//optimization in 1D
-			//virtual real OneD_Minimum(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given) const;
-			//virtual double Golden_Section(const arma::Col<double> give_coordinate, const arma::Col<double> give_search_direction);
+			virtual arma::Col<real> Conj_Grad_Search(arma::Col<real> start_coordinate = arma::zeros<arma::Col<real> >(dim_para)) const;
 
 			virtual ~Min_Conj_Grad() = default;
 		};
 
 		//a frequently used oned search
 		template<typename real>
-		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, Target_function<real> *f, const unsigned int max_iteration, const real epsilon);
-
+		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon);
 
 
 	}
 }
+
 //Target_function example
 /*
 typedef double real;

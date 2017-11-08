@@ -149,7 +149,7 @@ template class Deng::GOAT::GOAT_Target_1st_order<std::complex<float>, float >;
 template class Deng::GOAT::GOAT_Target_1st_order<std::complex<double>, double>;
 
 template<typename Field, typename Parameter>
-Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given)
+Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given) const
 {
 	H_and_partial_H_pt->Update_parameters(coordinate_given);
 	RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
@@ -163,7 +163,7 @@ Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Co
 
 }
 template<typename Field, typename Parameter>
-arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value)
+arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const
 {
 	H_and_partial_H_pt->Update_parameters(coordinate_given);
 	RK_pt->Prep_for_H(*H_and_partial_H_pt);
@@ -198,7 +198,7 @@ template class Deng::GOAT::GOAT_Target_1st_order_no_phase<std::complex<float>, f
 template class Deng::GOAT::GOAT_Target_1st_order_no_phase<std::complex<double>, double>;
 
 template<typename Field, typename Parameter>
-Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given)
+Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given) const
 {
 	H_and_partial_H_pt->Update_parameters(coordinate_given);
 	RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
@@ -215,7 +215,7 @@ Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const
 
 }
 template<typename Field, typename Parameter>
-arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value)
+arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const
 {
 	H_and_partial_H_pt->Update_parameters(coordinate_given);
 	RK_pt->Prep_for_H(*H_and_partial_H_pt);
