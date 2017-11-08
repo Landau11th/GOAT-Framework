@@ -8,10 +8,11 @@
 #include "GOAT_RK4.hpp"
 #include "Deng_vector.hpp"
 
-
 #include "transverse_Ising.hpp"
 
+
 void Verify_level_crossing();
+
 
 int main(int argc, char** argv)
 {
@@ -66,10 +67,8 @@ int main(int argc, char** argv)
 		target.Set_Initial_States(eigvec_0);
 	}
 	target.Set_Controlled_Unitary_Matrix(unitary_goal);
-	
 
-
-
+  
 	//set up Conjugate gradient method for searching minimum
 	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, 1E-3, 100);
 	//appoint target function
@@ -89,19 +88,6 @@ int main(int argc, char** argv)
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

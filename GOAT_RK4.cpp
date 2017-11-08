@@ -23,7 +23,8 @@ template <typename Field, typename Parameter>
 Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Deng::Col_vector<arma::Mat<Field>> U, unsigned int t_index, bool half_time) const
 {
     Parameter shift = half_time ? 0.5 : 0.0;
-	//0 or 1???
+    //0 or 1???
+
 	
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
@@ -38,6 +39,7 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
     for(unsigned int i = 1; i <= _dim_para; ++i)
     {
 		//std::cout << iH_and_partial_H[i];
+		//central equation of GOAT
 		k[i] = iH_and_partial_H[i]*U[0] + iH_and_partial_H[0]*U[i];
     }
 
@@ -56,10 +58,11 @@ arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(arma::Mat<Field> po
 	Parameter t = (t_index + shift)*_dt;
 
 	arma::Mat<Field> iH = Dynamics_U(t);
-
+  
 	return iH*position;
 
 }
+
 
 
 
@@ -183,9 +186,18 @@ arma::Col<Parameter> GOAT_Target_1st_order<Field, Parameter>::negative_gradient(
 		//trace_of_unitary = g_phase_factor*trace_of_unitary/(double)gradient.n_elem;
 		gradient[i] = trace_of_unitary.real();
 	}
-
 	return -gradient;
 }
+template <typename Field, typename Parameter>
+void RK4<Field, Parameter>::Evolve_to_final_U(const Deng::GOAT::Hamiltonian<Field, Parameter> &H)
+{
+	for (unsigned int i = 0; i < H._N_t; ++i)
+	{
+		Evolve_one_step(H, i);
+		current_state[0] = next_state[0];
+	}
+}
+
 
 
 //realization of Deng::GOAT::GOAT_Target_1st_order
@@ -217,7 +229,7 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 	H_and_partial_H_pt->Update_parameters(coordinate_given);
 	RK_pt->Prep_for_H(*H_and_partial_H_pt);
 	RK_pt->Evolve_to_final(*H_and_partial_H_pt);
-	
+
 	//give function value
 	//DO NOT USE auto here. It causes error. Reason is unknown
 	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
@@ -238,3 +250,4 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 
 	return -gradient;
 }
+
