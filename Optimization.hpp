@@ -111,7 +111,15 @@ namespace Deng
 
 		//a frequently used oned search
 		template<typename real>
-		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon);
+		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
+		);
+
+		template<typename real>
+		real Search_Appropriate_Shape(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon,
+			real &middle, real &right, real &f_middle, real &f_right
+		);
 
 
 	}

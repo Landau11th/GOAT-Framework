@@ -8,10 +8,77 @@
 #include "GOAT_RK4.hpp"
 #include "Deng_vector.hpp"
 
+#define ISING_CONTROL_INDIVIDUAL
 #include "transverse_Ising.hpp"
 
-
 void Verify_level_crossing();
+
+#ifdef ISING_CONTROL_INDIVIDUAL
+Deng::Col_vector<real> Transverse_Ising::control_field(real t, unsigned int ith_spin) const
+{
+	Deng::Col_vector<real> ctrl(3);
+	ctrl[0] = 0.0;
+	ctrl[1] = 0.0;
+	ctrl[2] = 0.0;
+
+	static const unsigned int num_para_each_spin = _dim_para / num_spin;
+	const unsigned int para_shift = ith_spin*num_para_each_spin;
+
+	unsigned int mode = 0;
+	unsigned int trig = 0;
+	unsigned int direction = 0;
+
+	//this const must be smaller than 3
+	const unsigned int num_const_field = 1;
+	for (unsigned int i = 0 + para_shift; i < (num_const_field + para_shift); ++i)
+	{
+		ctrl[2 - (int)(i - para_shift)] += parameters[i];
+	}
+	for (unsigned int i = num_const_field + para_shift; i < (num_para_each_spin + para_shift); ++i)
+	{
+		//std::cout << i << std::endl;
+		mode = (i - num_const_field) / 6 + 1;
+		trig = (i - num_const_field) % 6;
+		direction = trig % 3;
+		//-1 make the field vanishes at 0 and tau
+		ctrl[direction] += trig < 3 ? parameters[i] * sin(mode * omega * t) : parameters[i] * (cos(mode * omega * t) - 1);
+	}
+	return ctrl;
+
+}
+arma::Mat<elementtype> Transverse_Ising::H_control(real t) const
+{
+	arma::Mat<elementtype> h_c(_N, _N, arma::fill::zeros);
+
+	for (unsigned int i = 0; i < num_spin; ++i)
+	{
+		h_c += control_field(t, i) ^ S_each[i];
+	}
+
+	return h_c;
+}
+Deng::Col_vector<arma::Mat<elementtype> > Transverse_Ising::Dynamics(real t) const
+{
+	Deng::Col_vector<arma::Mat<elementtype> > iH_and_partial_H(_dim_para + 1);
+
+	iH_and_partial_H[0] = Dynamics_U(t);
+
+	for (unsigned int i = 1; i <= _dim_para; ++i)
+	{
+		unsigned int spin_index = (i - 1) / (_dim_para / num_spin);
+		//could be generalize?
+		//double original_para = parameters[i];
+		parameters[i - 1] += 0.01;
+		Deng::Col_vector<real> partial_control = control_field(t, spin_index);
+		parameters[i - 1] -= 0.01;
+		partial_control = (1 / 0.01)*(partial_control - control_field(t, spin_index));
+
+		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S_each[spin_index]);
+	}
+
+	return iH_and_partial_H;
+}
+#endif	
 
 
 int main(int argc, char** argv)
@@ -20,16 +87,17 @@ int main(int argc, char** argv)
 	const unsigned int num_spinor = std::stoi(argv[1]);
 	const unsigned int dim_hamil = 1 << num_spinor;
 	const unsigned int dim_para = std::stoi(argv[2]);
-	const bool rand = std::stoi(argv[3]) ? true : false;
+	const unsigned int rand = std::stoi(argv[3]);
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
 	std::cout << "Dim of Paramateric space: " << dim_para << std::endl;
-	std::cout << "start with " << (rand? "random location" : "0")<< std::endl << std::endl << std::endl;
+	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 	
 	const unsigned int N_t = 1000;
 	const real tau = 1.0;
 	const real epsilon = 1E-4;
 	const real epsilon_gradient = 1E-4;
+	const unsigned int conj_grad_max_iter = 400;
 
 
 	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
@@ -48,8 +116,8 @@ int main(int argc, char** argv)
 	arma::Mat<elementtype> unitary_goal(dim_hamil, dim_hamil, arma::fill::zeros);
 	{
 		arma::Col<real> eigval_0;
-		auto H_0 = H.H_0(0);
-		auto eigvec_0 = H_0;
+		arma::Mat<elementtype> H_0 = H.H_0(0);
+		arma::Mat<elementtype> eigvec_0 = H_0;
 		arma::eig_sym(eigval_0, eigvec_0, H_0, "std");
 		
 		//std::cout << H_0 << std::endl;
@@ -57,8 +125,8 @@ int main(int argc, char** argv)
 		//std::cout << eigvec_0 << std::endl;
 
 		arma::Col<real> eigval_tau;
-		auto H_tau = H.H_0(tau);
-		auto eigvec_tau = H_tau;
+		arma::Mat<elementtype> H_tau = H.H_0(tau);
+		arma::Mat<elementtype> eigvec_tau = H_tau;
 		arma::eig_sym(eigval_tau, eigvec_tau, H_tau, "std");
 
 		//std::cout << H_tau << std::endl;
@@ -74,7 +142,7 @@ int main(int argc, char** argv)
 	target.Set_Controlled_Unitary_Matrix(unitary_goal);
 
 	//set up Conjugate gradient method for searching minimum
-	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, 100, epsilon_gradient);
+	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
 	//appoint target function
 	Conj_Grad.Assign_Target_Function(&target);
 	//appoint the 1D search method
@@ -82,11 +150,10 @@ int main(int argc, char** argv)
 	
 	//generate initial coordinate to start
 	arma::arma_rng::set_seed(time(nullptr));
-	arma::Col<real> start(dim_para, arma::fill::randu);
+	arma::Col<real> start(dim_para, arma::fill::randn);
 	//how wide the initial coordinate we choose
-	start = 4.0*(start - 0.5);
-	if (!rand)
-		start.zeros();
+	start = rand*start;
+	
 
 	
 	bool is_stationary = true;
@@ -107,18 +174,22 @@ int main(int argc, char** argv)
 			//randomly pick a direction
 			arma::Col<real> shift(dim_para, arma::fill::randu);
 			auto temp_search_direction = Conj_Grad.previous_search_direction;
-			real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
-			shift = sqrt(scale)*shift;
-			shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
+			//real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
+			//shift = sqrt(scale)*shift;
+			//shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
+			start = current_min_coordinate;
+			real lambda = Deng::Optimization::OneD_Golden_Search<real>(start, temp_search_direction, &target, 200, epsilon);
+			if (lambda<0)
+				lambda = Deng::Optimization::OneD_Golden_Search<real>(start, -temp_search_direction, &target, 200, epsilon);
 
-			real temp_func_value = target.function_value(current_min_coordinate + shift);
+			real temp_func_value = target.function_value(current_min_coordinate + lambda*shift);
 
 			if (temp_func_value < current_min)
 			{
 				//this minimum is only a stationary point
 				is_stationary = true;
-				start = current_min_coordinate + shift;
-				std::cout << "\n\nNot a minimum\n";
+				start = current_min_coordinate + lambda*shift;
+				std::cout << "\n\nNot a (local) minimum\n\n";
 
 				break;
 			}

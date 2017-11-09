@@ -34,7 +34,7 @@ arma::Col<real> Min_Conj_Grad<real>::Conj_Grad_Search(arma::Col<real> start_coor
 
 	unsigned int count_iteration = 0;
 	int count_close_function_value = 0;
-	static const int count_close_function_value_max = 5;
+	const int count_close_function_value_max = start_coordinate.size();
 	for (count_iteration = 0; count_iteration < _max_iteration; ++count_iteration)
 	{
 		if (sqrt(arma::as_scalar(search_direction.t()*search_direction)) < _epsilon_gradient)
@@ -223,9 +223,10 @@ real Deng::Optimization::OneD_Golden_Search(const arma::Col<real> start_coordina
     //real Golden ratio algorithm
     unsigned int count_iteration = 0;
     //the criteria does not contain absolute value because we know clearly which side the local minimum lies
-	for(count_iteration = 0; count_iteration < max_iteration; ++count_iteration)
-    while( (f_right + f_left - 2.0*f_middle)/2>= epsilon && count_iteration < max_iteration)
+	//for (count_iteration = 0; count_iteration < max_iteration + find_shape; ++count_iteration)
+    while( (f_right + f_left - 2.0*f_middle)/2>= epsilon )//&& count_iteration < max_iteration)
     {
+		++count_iteration;
 		if ((f_right + f_left - 2.0*f_middle) / 2 >= epsilon)
 			break;
 
