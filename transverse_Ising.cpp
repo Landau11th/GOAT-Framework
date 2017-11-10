@@ -1,0 +1,272 @@
+#include"transverse_Ising.hpp"
+
+template class Transverse_Ising<std::complex<float>, float>;
+template class Transverse_Ising<std::complex<double>, double>;
+
+template<typename Field, typename Parameter>
+Transverse_Ising<Field, Parameter>::Transverse_Ising<Field, Parameter>(unsigned int num_spin, unsigned int N_t, Parameter tau,
+	unsigned int dim_para, unsigned int dim_para_each_direction, Parameter hbar = 1.0)
+	: Deng::GOAT::Hamiltonian<Field, Parameter>((1 << num_spin), N_t, tau, dim_para),
+	_omega(2.0*Pi / tau), _hbar(hbar), _num_spin(num_spin), _dim_para_each_direction(dim_para_each_direction)
+	//2 for the dimension of spin half system
+{
+	if ((_dim_para%_dim_para_each_direction))
+		std::cout << "Dimension of parametric space does not fit! Could cause potential problem\n";
+
+	//set up Pauli matrices
+	S.set_size(3);
+	S[0].zeros(2, 2);
+	S[0](0, 1) = 1;
+	S[0](1, 0) = 1;
+	S[1].zeros(2, 2);
+	S[1](0, 1) = -imag_i;
+	S[1](1, 0) = imag_i;
+	S[2].zeros(2, 2);
+	S[2](0, 0) = 1;
+	S[2](1, 1) = -1;
+	S_identity.zeros(2, 2);
+	S_identity(0, 0) = 1;
+	S_identity(1, 1) = 1;
+	//std::cout << S_identity;
+	//S = 0.5*_hbar*S;//Eq 3.2
+
+	//initialize the interaction part
+	interaction.set_size(_N, _N);
+	interaction.zeros();
+	//calculate the interaction part
+	for (unsigned int i = 0; i < (num_spin-1); ++i)
+	{
+		arma::Mat<Field> temp = i == 0 ? S[2] : S_identity;
+		for (unsigned int j = 1; j < num_spin; ++j)
+		{
+			temp = arma::kron(temp, (j == i) || (j == i + 1) ? S[2] : S_identity);
+		}
+		interaction -= temp;
+	}
+	//interaction *= _J;
+
+	//total S alone 3 directions
+	S_total.set_size(3);
+	for (unsigned int i = 0; i < 3; ++i)
+	{
+		S_total[i].set_size(_N, _N);
+		S_total[i].zeros();
+		//calculate the total S alone 3 directions
+		for (unsigned int j = 0; j < num_spin; ++j)
+		{
+			arma::Mat<Field> temp_B = j == 0 ? S[i] : S_identity;
+			for (unsigned int k = 1; k < num_spin; ++k)
+			{
+				temp_B = arma::kron(temp_B, j == k ? S[i] : S_identity);
+			}
+			S_total[i] += temp_B;
+		}
+	}
+}
+template<typename Field, typename Parameter>
+Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) const
+{
+	Deng::Col_vector<Parameter> B_field(3);
+
+	//rotating B field
+	//B_field[0] = cos(0.25*_omega*t)*_B_x_max;
+	//B_field[1] = _B_y_max;
+	//B_field[2] = sin(0.25*_omega*t)*_B_z_max;
+
+	B_field[0] = _B_x_max *(1 + t / _tau);
+	B_field[1] = 0.0;
+	B_field[2] = _B_z_max *t / _tau *t / _tau;
+
+	//constant B field
+	//B_field[0] = _B_x_max;
+	//B_field[1] = 0.0;
+	//B_field[2] = _B_z_max;
+
+	return B_field;
+}
+//give H_0, with time dependent parameter, but not control field
+template<typename Field, typename Parameter>
+arma::Mat<Field> Transverse_Ising<Field, Parameter>::H_0(Parameter t) const
+{
+	//bracket is necessary as operator ^ is of low priority
+	return interaction + (B(t) ^ S_total);
+}
+//calculate control magnetic field based on the parameters
+template<typename Field, typename Parameter>
+Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::control_field(Parameter t) const
+{
+	Deng::Col_vector<Parameter> ctrl(3);
+
+	for (unsigned int i = 0; i < 3; ++i)
+		ctrl[i] = control_field_component(t, i*_dim_para_each_direction);
+
+	return ctrl;
+}
+//calculate certain component with parameters starting from para_idx_begin
+template<typename Field, typename Parameter>
+Parameter Transverse_Ising<Field, Parameter>::control_field_component(Parameter t, unsigned int para_idx_begin) const
+{
+	Parameter component = 0.0;
+	unsigned int mode, trig;
+	for (unsigned int i = 0; i < _dim_para_each_direction; ++i)
+	{
+		mode = i / 2 + 1;
+		trig = i % 2;
+		//control field vanish at boundary
+		component += trig == 0 ? parameters(i + para_idx_begin) * sin(mode * _omega * t) : parameters(i + para_idx_begin) * (cos(mode * _omega * t) - 1);
+	}
+	return component;
+}
+//control Hamiltonian
+template<typename Field, typename Parameter>
+arma::Mat<Field> Transverse_Ising<Field, Parameter>::H_control(Parameter t) const
+{
+	return control_field(t) ^ S_total;
+}
+//dynamics of GOAT
+template<typename Field, typename Parameter>
+Deng::Col_vector<arma::Mat<Field>> Transverse_Ising<Field, Parameter>::Dynamics(Parameter t) const
+{
+	Deng::Col_vector<arma::Mat<Field> > iH_and_partial_H(_dim_para + 1);
+
+	iH_and_partial_H[0] = Dynamics_U(t);
+
+	for (unsigned int i = 1; i <= _dim_para; ++i)
+	{
+		//could be generalize?
+		//double original_para = parameters[i];
+		parameters[i - 1] += 0.0078125;
+		Deng::Col_vector<Parameter> partial_control = control_field(t);
+		parameters[i - 1] -= 0.0078125;
+		partial_control = (1 / 0.0078125)*(partial_control - control_field(t));
+
+		//iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S_total);
+		iH_and_partial_H[i] = -imag_i*(partial_control^S_total);
+	}
+
+	return iH_and_partial_H;
+}
+//dynamics of plain Hamiltonian
+template<typename Field, typename Parameter>
+arma::Mat<Field> Transverse_Ising<Field, Parameter>::Dynamics_U(Parameter t) const
+{
+	//return (-imag_i / _hbar)*(H_0(t) + H_control(t));
+	return (-imag_i)*(H_0(t) + H_control(t));
+}
+
+
+
+
+
+
+template class Transverse_Ising_Local_Control<std::complex<float>, float>;
+template class Transverse_Ising_Local_Control<std::complex<double>, double>;
+
+
+template<typename Field, typename Parameter>
+Transverse_Ising_Local_Control<Field, Parameter>::Transverse_Ising_Local_Control(unsigned int num_spin, unsigned int N_t, Parameter tau,
+	unsigned int dim_para, unsigned int dim_para_each_direction, Parameter hbar = 1.0)
+	: Transverse_Ising<Field, Parameter>(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar)
+{
+	if (_dim_para != (2 * _num_spin + 1)*_dim_para_each_direction)
+		std::cout << "Dimension of parametric space does not fit for local control!" << std::endl;
+	//S of each spin
+	S_each = new Deng::Col_vector<arma::Mat<Field>>[num_spin];
+
+	for (unsigned int i = 0; i < num_spin; ++i)
+	{
+		S_each[i].set_size(3);
+		for (unsigned int j = 0; j < 3; ++j)
+		{
+			S_each[i][j].set_size(_N, _N);
+			S_each[i][j].zeros();
+		}
+	}
+
+	for (unsigned int i = 0; i < 3; ++i)
+	{
+		//calculate the total S alone 3 directions
+		for (unsigned int j = 0; j < num_spin; ++j)
+		{
+			arma::Mat<Field> temp_B = j == 0 ? S[i] : S_identity;
+			for (unsigned int k = 1; k < num_spin; ++k)
+			{
+				temp_B = arma::kron(temp_B, j == k ? S[i] : S_identity);
+			}
+			S_each[j][i] = temp_B;
+		}
+	}
+}
+
+template<typename Field, typename Parameter>
+Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::local_control_field(Parameter t, unsigned int ith_spin) const
+{
+	Deng::Col_vector<Parameter> ctrl(3);
+
+	static const unsigned int dim_para_each_site = 2 * _dim_para_each_direction;
+	if (ith_spin < _num_spin)
+	{
+		ctrl[0] = 0.0;
+		ctrl[1] = control_field_component(t, (2 * ith_spin + 0)*_dim_para_each_direction);
+		ctrl[2] = control_field_component(t, (2 * ith_spin + 1)*_dim_para_each_direction);
+	}
+	else if(ith_spin == _num_spin)
+	{
+		ctrl[0] = control_field_component(t, 2 * _num_spin *_dim_para_each_direction);
+		ctrl[1] = 0.0;
+		ctrl[2] = 0.0;
+	}
+	else
+	{
+		assert(false && "Wrong dimension in local_control_field");
+	}
+
+	return ctrl;
+}
+
+template<typename Field, typename Parameter>
+arma::Mat<Field> Transverse_Ising_Local_Control<Field, Parameter>::H_control(Parameter t) const
+{
+	arma::Mat<Field> h_c(_N, _N, arma::fill::zeros);
+
+	for (unsigned int i = 0; i <_num_spin; ++i)
+	{
+		h_c += local_control_field(t, i) ^ S_each[i];
+	}
+
+	return h_c;
+}
+
+template<typename Field, typename Parameter>
+Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Parameter>::Dynamics(Parameter t) const
+{
+	Deng::Col_vector<arma::Mat<Field> > iH_and_partial_H(_dim_para + 1);
+
+	iH_and_partial_H[0] = Dynamics_U(t);
+
+	for (unsigned int i = 1; i <= (_dim_para - _dim_para_each_direction); ++i)
+	{
+		unsigned int spin_index = (i - 1) / (2 * _dim_para_each_direction);
+		//could be generalize?
+		//double original_para = parameters[i];
+		parameters[i - 1] += 0.0078125;
+		Deng::Col_vector<Parameter> partial_control = local_control_field(t, spin_index);
+		parameters[i - 1] -= 0.0078125;
+		partial_control = (1 / 0.0078125)*(partial_control - local_control_field(t, spin_index));
+
+		iH_and_partial_H[i] = (-imag_i)*(partial_control^S_each[spin_index]);
+	}
+	for (unsigned int i = (_dim_para - _dim_para_each_direction)+1; i <= _dim_para; ++i)
+	{
+		//could be generalize?
+		//double original_para = parameters[i];
+		parameters[i - 1] += 0.0078125;
+		Parameter partial_control = control_field_component(t, _dim_para - _dim_para_each_direction);
+		parameters[i - 1] -= 0.0078125;
+		partial_control = (1 / 0.0078125)*(partial_control - control_field_component(t, _dim_para - _dim_para_each_direction));
+
+		iH_and_partial_H[i] = (-imag_i)*(partial_control*S_total[0]);
+	}
+
+	return iH_and_partial_H;
+}

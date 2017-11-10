@@ -13,94 +13,31 @@
 
 void Verify_level_crossing();
 
-#ifdef ISING_CONTROL_INDIVIDUAL
-Deng::Col_vector<real> Transverse_Ising::control_field(real t, unsigned int ith_spin) const
-{
-	Deng::Col_vector<real> ctrl(3);
-	ctrl[0] = 0.0;
-	ctrl[1] = 0.0;
-	ctrl[2] = 0.0;
-
-	static const unsigned int num_para_each_spin = _dim_para / num_spin;
-	const unsigned int para_shift = ith_spin*num_para_each_spin;
-
-	unsigned int mode = 0;
-	unsigned int trig = 0;
-	unsigned int direction = 0;
-
-	//this const must be smaller than 3
-	const unsigned int num_const_field = 1;
-	for (unsigned int i = 0 + para_shift; i < (num_const_field + para_shift); ++i)
-	{
-		ctrl[2 - (int)(i - para_shift)] += parameters[i];
-	}
-	for (unsigned int i = num_const_field + para_shift; i < (num_para_each_spin + para_shift); ++i)
-	{
-		//std::cout << i << std::endl;
-		mode = (i - num_const_field) / 6 + 1;
-		trig = (i - num_const_field) % 6;
-		direction = trig % 3;
-		//-1 make the field vanishes at 0 and tau
-		ctrl[direction] += trig < 3 ? parameters[i] * sin(mode * omega * t) : parameters[i] * (cos(mode * omega * t) - 1);
-	}
-	return ctrl;
-
-}
-arma::Mat<elementtype> Transverse_Ising::H_control(real t) const
-{
-	arma::Mat<elementtype> h_c(_N, _N, arma::fill::zeros);
-
-	for (unsigned int i = 0; i < num_spin; ++i)
-	{
-		h_c += control_field(t, i) ^ S_each[i];
-	}
-
-	return h_c;
-}
-Deng::Col_vector<arma::Mat<elementtype> > Transverse_Ising::Dynamics(real t) const
-{
-	Deng::Col_vector<arma::Mat<elementtype> > iH_and_partial_H(_dim_para + 1);
-
-	iH_and_partial_H[0] = Dynamics_U(t);
-
-	for (unsigned int i = 1; i <= _dim_para; ++i)
-	{
-		unsigned int spin_index = (i - 1) / (_dim_para / num_spin);
-		//could be generalize?
-		//double original_para = parameters[i];
-		parameters[i - 1] += 0.01;
-		Deng::Col_vector<real> partial_control = control_field(t, spin_index);
-		parameters[i - 1] -= 0.01;
-		partial_control = (1 / 0.01)*(partial_control - control_field(t, spin_index));
-
-		iH_and_partial_H[i] = (-imag_i / _hbar)*(partial_control^S_each[spin_index]);
-	}
-
-	return iH_and_partial_H;
-}
-#endif	
-
+typedef double real;
+typedef std::complex<real> elementtype;
 
 int main(int argc, char** argv)
 {
 	//Verify_level_crossing();
 	const unsigned int num_spinor = std::stoi(argv[1]);
 	const unsigned int dim_hamil = 1 << num_spinor;
-	const unsigned int dim_para = std::stoi(argv[2]);
+	const unsigned int dim_para_each_direction = std::stoi(argv[2]);
+	const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
 	const unsigned int rand = std::stoi(argv[3]);
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
-	std::cout << "Dim of Paramateric space: " << dim_para << std::endl;
+	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
 	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 	
-	const unsigned int N_t = 1000;
-	const real tau = 1.0;
-	const real epsilon = 1E-4;
-	const real epsilon_gradient = 1E-4;
-	const unsigned int conj_grad_max_iter = 400;
+	const unsigned int N_t = 2000;
+	const real tau = 3.0;
+	const real epsilon = 1E-3;
+	const real epsilon_gradient = 1E-2;
+	const unsigned int conj_grad_max_iter = 100;
 
 
-	Transverse_Ising H(num_spinor, N_t, tau, dim_para);
+	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
+	Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para / (2 * num_spinor + 1));
 	Deng::GOAT::RK4<elementtype, real> RK;
 
 	//RK.Prep_for_H_U(H);
@@ -143,61 +80,84 @@ int main(int argc, char** argv)
 
 	//set up Conjugate gradient method for searching minimum
 	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
+	Deng::Optimization::Newton_1st_order<real> NT_search(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	//appoint target function
 	Conj_Grad.Assign_Target_Function(&target);
+	NT_search.Assign_Target_Function_Newton(&target, -(real)(dim_hamil));
 	//appoint the 1D search method
 	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
-	
+	//Conj_Grad.Opt_1D = Deng::Optimization::My_1D_foward_method<real>;
 	//generate initial coordinate to start
 	arma::arma_rng::set_seed(time(nullptr));
 	arma::Col<real> start(dim_para, arma::fill::randn);
 	//how wide the initial coordinate we choose
 	start = rand*start;
-	
 
-	
-	bool is_stationary = true;
+	//std::cout << H.H_0(1.0) - H.H_0(0);
+	//std::cout << H.S_total[0] << H.S_total[2];
+	//std::cout << H.interaction;
 
-	while (is_stationary)
+	start = NT_search.Newton(start);
+
+	real new_epsilon = 10 * epsilon;
+
+	do 
 	{
-		//redundant calculation...
-		auto current_min_coordinate = Conj_Grad.Conj_Grad_Search(start);
-		auto current_min_previous_search_direction = Conj_Grad.previous_search_direction;
-		auto current_min = target.function_value(current_min_coordinate);
+		Conj_Grad.Revise_epsilon(new_epsilon);
+		NT_search.Revise_epsilon(new_epsilon);
 		
-		
-		is_stationary = false;
-		//move the coordinate around
-		//to see if it is only a stationary point
-		for (int i = 0; i < 2*dim_hamil; ++i)
-		{
-			//randomly pick a direction
-			arma::Col<real> shift(dim_para, arma::fill::randu);
-			auto temp_search_direction = Conj_Grad.previous_search_direction;
-			//real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
-			//shift = sqrt(scale)*shift;
-			//shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
-			start = current_min_coordinate;
-			real lambda = Deng::Optimization::OneD_Golden_Search<real>(start, temp_search_direction, &target, 200, epsilon);
-			if (lambda<0)
-				lambda = Deng::Optimization::OneD_Golden_Search<real>(start, -temp_search_direction, &target, 200, epsilon);
+		start = Conj_Grad.Conj_Grad_Search(start);
+		start = NT_search.Newton(start);
+	} while (target.function_value(start) - NT_search.Value_of_target_value() > new_epsilon);
+	
+	
 
-			real temp_func_value = target.function_value(current_min_coordinate + lambda*shift);
+	
+	//bool is_stationary = true;
 
-			if (temp_func_value < current_min)
-			{
-				//this minimum is only a stationary point
-				is_stationary = true;
-				start = current_min_coordinate + lambda*shift;
-				std::cout << "\n\nNot a (local) minimum\n\n";
+	//while (is_stationary)
+	//{
+	//	//redundant calculation...
+	//	auto current_min_coordinate = Conj_Grad.Conj_Grad_Search(start);
+	//	auto current_min_previous_search_direction = Conj_Grad.previous_search_direction;
+	//	auto current_min = target.function_value(current_min_coordinate);
+	//	
+	//	
+	//	is_stationary = false;
+	//	//move the coordinate around
+	//	//to see if it is only a stationary point
+	//	start = current_min_coordinate;
+	//	for (int i = 0; i < 2*dim_hamil; ++i)
+	//	{
+	//		//randomly pick a direction
+	//		arma::Col<real> shift(dim_para, arma::fill::randu);
+	//		auto temp_search_direction = Conj_Grad.previous_search_direction;
+	//		//real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
+	//		//shift = sqrt(scale)*shift;
+	//		//shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
+	//		//real lambda = Deng::Optimization::OneD_Golden_Search<real>(start, temp_search_direction, &target, 200, epsilon);
+	//		real lambda = Deng::Optimization::My_1D_foward_method<real>(start, temp_search_direction, &target, 200, epsilon);
+	//		if (lambda<0)
+	//			lambda = Deng::Optimization::OneD_Golden_Search<real>(start, -temp_search_direction, &target, 200, epsilon);
 
-				break;
-			}
-		}
+	//		real temp_func_value = target.function_value(current_min_coordinate + lambda*shift);
 
-		if (!is_stationary)
-			std::cout << "\nReach (local) minimum" << std::endl;
-	}
+	//		if (temp_func_value < current_min)
+	//		{
+	//			//this minimum is only a stationary point
+	//			is_stationary = true;
+	//			start = current_min_coordinate + lambda*shift;
+	//			std::cout << "\n\nNot a (local) minimum\n\n";
+
+	//			break;
+	//		}
+	//	}
+
+	//	if (!is_stationary)
+	//	{
+	//		std::cout << "\nReach (local) minimum" << std::endl;
+	//	}	
+	//}
 
 
     return 0;
@@ -257,7 +217,7 @@ void Verify_level_crossing()
 
 	Deng::Col_vector<real> B_now = B;
 
-	Transverse_Ising H(num_spinor, N_t, tau, 9);
+	Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, 9, 2);
 
 	for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
 	{
