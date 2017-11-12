@@ -43,3 +43,6 @@ Intel MKL could be used to boost the performance.
 -When given an independent H, target function value (newer one without phase factor) should be -2^n, where n is the number of spins
 and the gradient should be close to 0
 -"std" option should be used in diagonalization
+
+
+plan to try Newton method. How to choose gamma?
