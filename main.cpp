@@ -22,17 +22,18 @@ int main(int argc, char** argv)
 	const unsigned int num_spinor = std::stoi(argv[1]);
 	const unsigned int dim_hamil = 1 << num_spinor;
 	const unsigned int dim_para_each_direction = std::stoi(argv[2]);
-	const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	const unsigned int dim_para = (2 * num_spinor +1)*dim_para_each_direction;
 	const unsigned int rand = std::stoi(argv[3]);
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
 	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
 	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 	
-	const unsigned int N_t = 2000;
+	const unsigned int N_t = 2048;
 	const real tau = 3.0;
-	const real epsilon = 1E-3;
-	const real epsilon_gradient = 1E-2;
+	const real epsilon = 1.0/1024;
+	const real epsilon_gradient = dim_hamil* epsilon;
 	const unsigned int conj_grad_max_iter = 100;
 
 
@@ -49,6 +50,10 @@ int main(int argc, char** argv)
 	//set up target function
 	//Deng::GOAT::GOAT_Target_1st_order<elementtype, real> target(&RK, &H);
 	Deng::GOAT::GOAT_Target_1st_order_no_phase<elementtype, real> target(&RK, &H);
+
+	//Deng::GOAT::GOAT_Target_2nd_order_no_phase<elementtype, real> target_finite_diff(&RK, &H);
+
+
 	//determine the target unitary matrix
 	arma::Mat<elementtype> unitary_goal(dim_hamil, dim_hamil, arma::fill::zeros);
 	{
@@ -75,17 +80,22 @@ int main(int argc, char** argv)
 			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();			
 		}
 		target.Set_Initial_States(eigvec_0);
+		//target_finite_diff.Set_Initial_States(eigvec_0);
 	}
 	target.Set_Controlled_Unitary_Matrix(unitary_goal);
+	//target_finite_diff.Set_Controlled_Unitary_Matrix(unitary_goal);
 
 	//set up Conjugate gradient method for searching minimum
-	Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
-	Deng::Optimization::Newton_1st_order<real> NT_search(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
+	//Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
+	//Deng::Optimization::Newton_Find_Root<real> NT_search(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
+	Deng::Optimization::Quasi_Newton<real> Quasi_NT(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
 	//appoint target function
-	Conj_Grad.Assign_Target_Function(&target);
-	NT_search.Assign_Target_Function_Newton(&target, -(real)(dim_hamil));
+	//Conj_Grad.Assign_Target_Function(&target);
+	//NT_search.Assign_Target_Function(&target);
+	//NT_search.Assign_Target_Function_Value(-(real)(dim_hamil));
+	Quasi_NT.Assign_Target_Function(&target);
 	//appoint the 1D search method
-	Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
+	//Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	//Conj_Grad.Opt_1D = Deng::Optimization::My_1D_foward_method<real>;
 	//generate initial coordinate to start
 	arma::arma_rng::set_seed(time(nullptr));
@@ -93,22 +103,40 @@ int main(int argc, char** argv)
 	//how wide the initial coordinate we choose
 	start = rand*start;
 
+	Quasi_NT.BFGS(start);
+
+	//Deng::Optimization::Newton_Find_Min<real> NT_search_hess(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
+	//NT_search_hess.Assign_Target_Function(&target_finite_diff);
+	//real a;
+	//auto b = start;
+	////std::cout << target_finite_diff.Hessian(start, a, b);
+	//NT_search_hess.Newton_2nd_order(start);
+
 	//std::cout << H.H_0(1.0) - H.H_0(0);
 	//std::cout << H.S_total[0] << H.S_total[2];
 	//std::cout << H.interaction;
 
-	start = NT_search.Newton(start);
+	
 
-	real new_epsilon = 10 * epsilon;
+	//H.Update_parameters(start);
+	//RK.Prep_for_H_U(H);
+	//RK.Evolve_to_final_U(H);
+	//auto A = RK.next_state[0];
+	//std::cout << A.t()*A << std::endl;
 
-	do 
-	{
-		Conj_Grad.Revise_epsilon(new_epsilon);
-		NT_search.Revise_epsilon(new_epsilon);
-		
-		start = Conj_Grad.Conj_Grad_Search(start);
-		start = NT_search.Newton(start);
-	} while (target.function_value(start) - NT_search.Value_of_target_value() > new_epsilon);
+	//start = NT_search.Newton_1st_order(start);
+
+	//real new_epsilon = 10 * epsilon;
+
+	//do 
+	//{
+	//	Conj_Grad.Revise_epsilon(new_epsilon);
+	//	NT_search.Revise_epsilon(new_epsilon);
+	//	
+	//	start = Conj_Grad.Conj_Grad_Search(start);
+	//	start = NT_search.Newton_1st_order(start);
+
+	//} while (target.function_value(start) - NT_search.Value_of_target_value() > new_epsilon);
 	
 	
 

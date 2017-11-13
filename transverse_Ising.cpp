@@ -233,6 +233,7 @@ arma::Mat<Field> Transverse_Ising_Local_Control<Field, Parameter>::H_control(Par
 	{
 		h_c += local_control_field(t, i) ^ S_each[i];
 	}
+	h_c += local_control_field(t, _num_spin) ^ S_total;
 
 	return h_c;
 }
@@ -244,7 +245,7 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 
 	iH_and_partial_H[0] = Dynamics_U(t);
 
-	for (unsigned int i = 1; i <= (_dim_para - _dim_para_each_direction); ++i)
+	for (unsigned int i = 1; i <= (2*_num_spin*_dim_para_each_direction); ++i)
 	{
 		unsigned int spin_index = (i - 1) / (2 * _dim_para_each_direction);
 		//could be generalize?
@@ -256,7 +257,7 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 
 		iH_and_partial_H[i] = (-imag_i)*(partial_control^S_each[spin_index]);
 	}
-	for (unsigned int i = (_dim_para - _dim_para_each_direction)+1; i <= _dim_para; ++i)
+	for (unsigned int i = (2 * _num_spin*_dim_para_each_direction)+1; i <= _dim_para; ++i)
 	{
 		//could be generalize?
 		//double original_para = parameters[i];

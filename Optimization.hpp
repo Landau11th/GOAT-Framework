@@ -62,7 +62,6 @@ namespace Deng
 			virtual ~Min_Know_Function() = default;
 		};
 
-
 		//this class is to optimize a function when we know the gradient
 		template<typename real>
 		class Min_Know_Gradient : public Min_Know_Function<real>
@@ -85,6 +84,27 @@ namespace Deng
 			};
 			virtual ~Min_Know_Gradient() = default;
 		};
+
+
+		template<typename real>
+		class Min_Know_Hessian : public Min_Know_Function<real>
+		{
+		protected:
+			real _epsilon_gradient;
+		public:
+			//may need a variable to record current minimum
+			//real current_min = nan;
+
+			//using Min_Know_Function<real>::Min_Know_Function;
+			//omit the default constructor.
+			//Must know the parameters before declare this object
+			Min_Know_Hessian(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
+				: Min_Know_Function<real>(dim_para, epsilon, max_iteration), _epsilon_gradient(epsilon_gradient)
+			{
+			};
+			virtual ~Min_Know_Hessian() = default;
+		};
+
 
 		//find minimum with conjugate gradient method
 		template<typename real>
@@ -113,9 +133,26 @@ namespace Deng
 		};
 
 
-		//find minimum with conjugate gradient method
+		//a frequently used oned search
 		template<typename real>
-		class Newton_1st_order : public Min_Know_Gradient<real>
+		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
+		);
+		//template<typename real>
+		//real Search_Appropriate_Shape(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+		//	const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon,
+		//	real &middle, real &right, real &f_middle, real &f_right
+		//);
+		template<typename real>
+		real My_1D_foward_method(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
+		);
+
+
+		//find the root of a function
+		//does not perform well in my tests
+		template<typename real>
+		class Newton_Find_Root : public Min_Know_Gradient<real>
 		{
 		protected:
 			real target_value;
@@ -124,138 +161,92 @@ namespace Deng
 			//it is needed in conj grad for a better search direction
 			mutable arma::Col<real> previous_search_direction;
 			//constructor
-			//using Min_Know_Gradient<real>::Min_Know_Gradient;
-			//value of _epsilon and _epsilon_gradient implicitly assume the scale of the space
-			Newton_1st_order(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
-				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
+			using Min_Know_Gradient<real>::Min_Know_Gradient;
+			//find root with first order derivative
+			arma::Col<real> Newton_Find_Root<real>::Newton_1st_order(arma::Col<real> start_coordinate = arma::zeros<arma::Col<real> >(dim_para, arma::fill::zeros)) const;
+			virtual void Assign_Target_Function_Value(real target)
 			{
-				previous_search_direction = arma::zeros<arma::Col<real> >(dim_para);
-			};
-
-			virtual void Assign_Target_Function_Newton(Target_function<real> *pt_f, real target)
-			{
-				f = pt_f;
 				target_value = target;
 			}
-			//if not giving a start coordinate, we start from 0
-			virtual arma::Col<real> Newton(arma::Col<real> start_coordinate = arma::zeros<arma::Col<real> >(dim_para, arma::fill::zeros)) const
-			{
-				std::cout << "Start search for " << target_value << "\n";
-				arma::Col<real> coordinate = start_coordinate;
-				real lambda = 0.0;
-				real function_value = 0;
-				arma::Col<real> search_direction = coordinate;
-				search_direction.zeros();
-				real gradient_norm = 1.0;
-				
-				bool if_start_random_search = false;
-
-				do 
-				{
-					unsigned int i = 0;
-					if_start_random_search = false;
-					
-					do 
-					{
-						lambda = (function_value - target_value) / (gradient_norm*gradient_norm);
-						coordinate += lambda*search_direction;
-
-						search_direction = f->negative_gradient(coordinate, function_value);
-						gradient_norm = sqrt(arma::as_scalar(search_direction.t()*search_direction));
-						
-						std::cout << i++ << " th search reach " << function_value << std::endl;
-						std::cout << coordinate.t() << std::endl;
-						if (i > _max_iteration)
-						{
-							if_start_random_search = true;
-							coordinate.randn();
-							std::cout << "Newton method hit max allowed iterations, start over" << std::endl;
-							break;
-						}
-					
-					} while (abs(function_value - target_value) > _epsilon && gradient_norm > _epsilon_gradient);
-
-				} while (if_start_random_search);
-
-				return coordinate;
-			}
-
 			real Value_of_target_value() const { return target_value; }
-
-			virtual ~Newton_1st_order() = default;
+			virtual ~Newton_Find_Root() = default;
 		};
 
-		//a frequently used oned search
-		template<typename real>
-		real OneD_Golden_Search(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
-			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
-		);
 
-		//template<typename real>
-		//real Search_Appropriate_Shape(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
-		//	const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon,
-		//	real &middle, real &right, real &f_middle, real &f_right
-		//);
-
+		//find minimum with Newton method
 		template<typename real>
-		real My_1D_foward_method(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
-			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
-		)
+		class Newton_Find_Min : public Min_Know_Hessian<real>
 		{
-			const real step_size = 1.0 / sqrt(as_scalar(search_direction_given.t()*search_direction_given));
-			real current_size = 10*step_size;
-			real lambda = 0;
-			
-			real f_current = f->function_value(start_coordinate);
-			real f_next = f_current + 1.0;
+		protected:
+			real target_value;
+		public:
+			//constructor
+			using Min_Know_Hessian<real>::Min_Know_Hessian;
+			arma::Col<real> Newton_2nd_order(arma::Col<real> start_coordinate) const;
+			real Value_of_target_value() const { return target_value; }
+			virtual ~Newton_Find_Min() = default;
+		};
 
-			unsigned int count_iter = 0;
-			while (f_current <= f_next)
+
+		//find minimum with Newton method
+		template<typename real>
+		class Quasi_Newton : public Min_Know_Gradient<real>
+		{
+		protected:
+			mutable arma::Mat<real> H_k;
+			mutable arma::Mat<real> H_kp1;
+			mutable arma::Mat<real> x_k;
+			mutable arma::Mat<real> x_kp1;
+			mutable arma::Mat<real> y_k;
+			mutable arma::Mat<real> delta_x_k;
+			mutable arma::Mat<real> neg_grad_k;
+			mutable arma::Mat<real> neg_grad_kp1;
+			arma::Mat<real> identity;
+		public:
+			//constructor
+			using Min_Know_Gradient<real>::Min_Know_Gradient;
+
+			Quasi_Newton(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
+				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
 			{
-				lambda = current_size;
-				f_next = f->function_value(start_coordinate + (lambda)*search_direction_given);
-				current_size = current_size*0.5;
+				identity.eye(dim_para, dim_para);
+			};
 
-				if (count_iter >= max_iteration)
+			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const
+			{
+				auto x_k = start_coordinate;
+				real f_value = 0;
+				neg_grad_k = f->negative_gradient(x_k, f_value);
+				H_k = identity;
+
+				real temp = 0.0;
+
+				real alpha_k = 0.5;
+
+				for (int i = 0; i < 50; ++i)
 				{
-					std::cout << "My_1D_search_method hit max iteration limit in the first part!" << std::endl;
-					break;
+					delta_x_k = alpha_k*(H_k*neg_grad_k);
+					x_kp1 = x_k + delta_x_k;
+					neg_grad_kp1 = f->negative_gradient(x_kp1, f_value);
+					y_k = neg_grad_k - neg_grad_kp1;
+
+					temp = arma::as_scalar(y_k.t()*delta_x_k);
+					H_kp1 = (identity - delta_x_k*y_k.t() / temp)*H_k*(identity - y_k*delta_x_k.t() / temp) + delta_x_k*delta_x_k.t() / temp;
+
+					std::cout << "new function value: " << f_value << " with gradient norm" << sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1))<< std::endl;
+					std::cout << x_kp1.t() << std::endl;
+
+
+					H_k = H_kp1;
+					neg_grad_k = neg_grad_kp1;
+					x_k = x_kp1;
 				}
+
+				return x_kp1;
 			}
 
-			
-			real f_forward = f_current + 100* epsilon;
-			real f_backward = f_current + 100 * epsilon;
-			count_iter = 0;
-			while ((abs(f_forward - f_current) + abs(f_backward - f_current)) >= epsilon)
-			{
-				f_forward = f->function_value(start_coordinate + (lambda + current_size)*search_direction_given);
-				f_backward = f->function_value(start_coordinate + (lambda - current_size)*search_direction_given);
-
-				if (f_forward < f_current)
-				{
-					f_current = f_forward;
-					lambda += current_size;
-				}
-				else if (f_backward < f_current)
-				{
-					f_current = f_backward;
-					lambda -= current_size;
-				}
-
-				current_size *= 0.5;
-				count_iter++;
-
-				if (count_iter >= max_iteration)
-				{
-					std::cout << "My_1D_search_method hit max iteration limit in the second part!" << std::endl;
-					break;
-				}
-			}
-			
-			return lambda;
-		}
-
+			virtual ~Quasi_Newton() = default;
+		};
 
 	}
 }

@@ -25,6 +25,18 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
     Parameter shift = half_time ? 0.5 : 0.0;
     //0 or 1???
 
+
+	int count_nan = 0;
+	for (int i = 0; i < U.dimension(); ++i)
+	{
+		if (U[i].has_nan())
+		{
+			std::cout << i << " th component of input U has NaN at " << t_index << " th step\n";
+			++count_nan;
+		}
+	}
+	assert(count_nan == 0 && "Derivative of Hamiltonian generates NaN\n");
+
 	
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
@@ -91,20 +103,20 @@ void RK4<Field, Parameter>::Prep_for_H(const Deng::GOAT::Hamiltonian<Field, Para
 template <typename Field, typename Parameter>
 void RK4<Field, Parameter>::Evolve_one_step(const Deng::GOAT::Hamiltonian<Field, Parameter> &H, const unsigned int t_index)
 {
-    auto k1 = H.Derivative(current_state               , t_index    , false);
+	auto k1 = H.Derivative(current_state               , t_index    , false);
 
-    auto k2 = H.Derivative(current_state + 0.5*H._dt*k1, t_index    , true );
+	auto k2 = H.Derivative(current_state + 0.5*H._dt*k1, t_index    , true );
 
-    auto k3 = H.Derivative(current_state + 0.5*H._dt*k2, t_index    , true );
+	auto k3 = H.Derivative(current_state + 0.5*H._dt*k2, t_index    , true );
 
-    auto k4 = H.Derivative(current_state +     H._dt*k3, t_index + 1, false);
+	auto k4 = H.Derivative(current_state +     H._dt*k3, t_index + 1, false);
 	//armadillo will throw runtime error if dimention does not fit here
     next_state = current_state + (H._dt/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4);
 }
 template <typename Field, typename Parameter>
 void RK4<Field, Parameter>::Evolve_to_final(const Deng::GOAT::Hamiltonian<Field, Parameter> &H)
 {
-    for(unsigned int i = 0; i < H._N_t; ++i)
+	for(unsigned int i = 0; i < H._N_t; ++i)
     {
         Evolve_one_step(H, i);
         current_state = next_state;
@@ -228,6 +240,14 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 
 	Field trace_of_UUUU = arma::as_scalar(UU_diag.t()*UU_diag).real();
 	function_value = -trace_of_UUUU.real();
+	if (function_value != function_value)
+	{
+		std::cout << UU_diag << std::endl;
+		std::cout << initial_states << std::endl;
+		std::cout << unitary_goal << std::endl;
+		std::cout << RK_pt->next_state[0] << std::endl;
+		assert(false && "GOAT_RK4 generates NaN!\n");
+	}
 	
 	//calc gradient
 	arma::Col<Parameter> gradient = coordinate_given;

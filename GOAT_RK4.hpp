@@ -132,6 +132,35 @@ namespace Deng
 			};
 			arma::Mat<Field> initial_states;
 		};
+
+
+		template<typename Field, typename Parameter>
+		class GOAT_Target_2nd_order_no_phase : public Deng::GOAT::GOAT_Target_1st_order_no_phase<Field, Parameter>
+		{
+		public:
+			using GOAT_Target_1st_order_no_phase::GOAT_Target_1st_order_no_phase;
+			//calculated Hessian approximately
+			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient) const override
+			{
+				negative_gradient = GOAT_Target_1st_order::negative_gradient(coordinate_given, function_value);
+
+				arma::Col<Parameter> finite_diff = coordinate_given;
+				const unsigned int dim_coordinate = coordinate_given.size();
+				arma::Mat<Parameter> hess(dim_coordinate, dim_coordinate, arma::fill::zeros);
+
+				for (unsigned int i = 0; i < dim_coordinate; ++i)
+				{
+					finite_diff.zeros();
+					finite_diff(i) = 0.0078125;
+
+					hess.col(i) = GOAT_Target_1st_order::negative_gradient(coordinate_given + finite_diff, function_value) - negative_gradient;
+				}
+				hess = -64.0*(hess+hess.t());
+				//hess = -128.0*hess;
+
+				return hess;
+			};
+		};
 		
     }
 }
