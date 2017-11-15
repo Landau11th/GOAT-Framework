@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	std::cout << "Number of spin: " << num_spinor << std::endl;
 	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
 	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
-	
+
 	const unsigned int N_t = 2048;
 	const real tau = 3.0;
 	const real epsilon = 1.0/1024;
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 		arma::Mat<elementtype> H_0 = H.H_0(0);
 		arma::Mat<elementtype> eigvec_0 = H_0;
 		arma::eig_sym(eigval_0, eigvec_0, H_0, "std");
-		
+
 		//std::cout << H_0 << std::endl;
 		//std::cout << eigval_0 << std::endl;
 		//std::cout << eigvec_0 << std::endl;
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
 
 		for (unsigned int i = 0; i < dim_hamil; ++i)
 		{
-			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();			
+			unitary_goal += eigvec_tau.col(i)*eigvec_0.col(i).t();
 		}
 		target.Set_Initial_States(eigvec_0);
 		//target_finite_diff.Set_Initial_States(eigvec_0);
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 	//appoint the 1D search method
 	//Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	//Conj_Grad.Opt_1D = Deng::Optimization::My_1D_foward_method<real>;
-	
+
 
 	//arma::Col<real> start_error = { 3.8956e+02, 2.5888e+02,	1.7711e+02,	1.1133e+02,	1.3407e+02,	3.1740e+02,	1.8245e+02,
 	//								1.7379e+02,	3.8170e+02,	1.2061e+02,	2.3854e+02,	2.9739e+01,	2.0196e+02,	3.5960e+02 };
@@ -203,6 +203,7 @@ int main(int argc, char** argv)
 
 	} while (!is_global_min);
 
+    outputfile.close();
 	//Deng::Optimization::Newton_Find_Min<real> NT_search_hess(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	//NT_search_hess.Assign_Target_Function(&target_finite_diff);
 	//real a;
@@ -214,7 +215,7 @@ int main(int argc, char** argv)
 	//std::cout << H.S_total[0] << H.S_total[2];
 	//std::cout << H.interaction;
 
-	
+
 
 	//H.Update_parameters(start);
 	//RK.Prep_for_H_U(H);
@@ -226,11 +227,11 @@ int main(int argc, char** argv)
 
 	//real new_epsilon = 10 * epsilon;
 
-	//do 
+	//do
 	//{
 	//	Conj_Grad.Revise_epsilon(new_epsilon);
 	//	NT_search.Revise_epsilon(new_epsilon);
-	//	
+	//
 	//	start = Conj_Grad.Conj_Grad_Search(start);
 	//	start = NT_search.Newton_1st_order(start);
 
@@ -248,7 +249,7 @@ void Verify_level_crossing()
 	//    const int N_t = 2000;
 	//    const double tau = 3.0;
 	//    const int dim_para = std::stoi(argv[1]);
-	const double hbar = 1.0;
+	//    const double hbar = 1.0;
 	//
 	//    const double epsilon = 0.01;
 	//    const int max_iteration = 20;
@@ -282,7 +283,7 @@ void Verify_level_crossing()
 	const unsigned int num_spinor = 6;
 	const unsigned int dim_hamil = 1 << num_spinor;
 
-	//output to 
+	//output to
 	std::ofstream outputfile;
 	outputfile.open("eigenvalues.dat");
 

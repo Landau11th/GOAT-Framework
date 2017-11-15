@@ -30,13 +30,15 @@ class Transverse_Ising : public Deng::GOAT::Hamiltonian<Field, Parameter>
 {
 	friend class Deng::GOAT::RK4<Field, Parameter>;
 protected:
+    //const
+    const Field minus_i_over_hbar;
 	//pressumed constants of the model
 	Parameter _B_x_max = 0.65;
 	Parameter _B_y_max = 0.0;
 	Parameter _B_z_max = 1.1;
+    Parameter _J = 1.0;
 	Parameter _omega;
-	Parameter _hbar;
-	Parameter _J = 1.0;
+    Parameter _hbar;
 	unsigned int _num_spin;
 	unsigned int _dim_para_each_direction;
 public:
@@ -49,7 +51,8 @@ public:
 	arma::Mat<Field> interaction;
 
 	//member functions
-	Transverse_Ising(unsigned int num_spin, unsigned int N_t, Parameter tau, unsigned int dim_para, unsigned int dim_para_each_direction, Parameter hbar = 1.0);
+	Transverse_Ising(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);
 
 	//external magnetic field
 	Deng::Col_vector<Parameter> B(Parameter t) const;
@@ -58,11 +61,11 @@ public:
 
 	//calculate control magnetic field based on the parameters
 	Deng::Col_vector<Parameter> control_field(Parameter t) const;
-	Parameter control_field_component(Parameter t, unsigned int para_idx_begin) const;
+	Parameter control_field_component(const Parameter t, const unsigned int para_idx_begin) const;
 	//give the control Hamiltonian
 	virtual arma::Mat<Field> H_control(Parameter t) const;
 
-	//give the dynamics 
+	//give the dynamics
 	virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(const Parameter t) const override;
 	virtual arma::Mat<Field> Dynamics_U(const Parameter t) const override;
 
@@ -81,15 +84,15 @@ public:
 	//S of each spin
 	Deng::Col_vector<arma::Mat<Field>>* S_each;
 
-	Transverse_Ising_Local_Control(unsigned int num_spin, unsigned int N_t, Parameter tau,
-		unsigned int dim_para, unsigned int dim_para_each_direction, Parameter hbar = 1.0);
+	Transverse_Ising_Local_Control(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);
 
 	//give the control Hamiltonian
 	Deng::Col_vector<Parameter> local_control_field(Parameter t, unsigned int ith_spin) const;
 	virtual arma::Mat<Field> H_control(Parameter t) const override;
 
 	//give the dynamics
-	virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(Parameter t) const override;
+	virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(const Parameter t) const override;
 
 	virtual ~Transverse_Ising_Local_Control()
 	{

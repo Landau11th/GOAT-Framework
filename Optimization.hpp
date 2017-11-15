@@ -77,7 +77,7 @@ namespace Deng
 			//using Min_Know_Function<real>::Min_Know_Function;
 			//omit the default constructor.
 			//Must know the parameters before declare this object
-			Min_Know_Gradient(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient) 
+			Min_Know_Gradient(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
 				: Min_Know_Function<real>(dim_para, epsilon, max_iteration), _epsilon_gradient(epsilon_gradient)
 			{
 				search_direction = arma::zeros<arma::Col<real> >(dim_para);
@@ -117,7 +117,7 @@ namespace Deng
 			//constructor
 			//using Min_Know_Gradient<real>::Min_Know_Gradient;
 			//value of _epsilon and _epsilon_gradient implicitly assume the scale of the space
-			Min_Conj_Grad(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient) 
+			Min_Conj_Grad(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
 				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
 			{
 				previous_search_direction = arma::zeros<arma::Col<real> >(dim_para);
@@ -127,7 +127,7 @@ namespace Deng
 			real(*Opt_1D)(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given, const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon);
 
 			//if not giving a start coordinate, we start from 0
-			virtual arma::Col<real> Conj_Grad_Search(arma::Col<real> start_coordinate = arma::zeros<arma::Col<real> >(dim_para)) const;
+			virtual arma::Col<real> Conj_Grad_Search(arma::Col<real> start_coordinate) const;
 
 			virtual ~Min_Conj_Grad() = default;
 		};
@@ -147,6 +147,10 @@ namespace Deng
 		real My_1D_foward_method(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
 			const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
 		);
+		template<typename real>
+        real OneD_Golden_Search_Recur(const arma::Col<real> start_coordinate, const arma::Col<real> search_direction_given,
+            const Target_function<real>* const f, const unsigned int max_iteration, const real epsilon
+        );
 
 
 		//find the root of a function
@@ -163,7 +167,7 @@ namespace Deng
 			//constructor
 			using Min_Know_Gradient<real>::Min_Know_Gradient;
 			//find root with first order derivative
-			arma::Col<real> Newton_Find_Root<real>::Newton_1st_order(arma::Col<real> start_coordinate = arma::zeros<arma::Col<real> >(dim_para, arma::fill::zeros)) const;
+			arma::Col<real> Newton_1st_order(arma::Col<real> start_coordinate) const;
 			virtual void Assign_Target_Function_Value(real target)
 			{
 				target_value = target;
@@ -209,15 +213,15 @@ namespace Deng
 			Quasi_Newton(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
 				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
 			{
-				identity.eye(_dim_para, _dim_para);
+				identity.eye(this->_dim_para, this->_dim_para);
 			};
 
 			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const
 			{
-				assert(start_coordinate.size() == _dim_para && "coordinate dimention mismatch in BFGS!");
+				assert(start_coordinate.size() == this->_dim_para && "coordinate dimention mismatch in BFGS!");
 				x_k = start_coordinate;
 				real f_value = 0;
-				neg_grad_k = f->negative_gradient(x_k, f_value);
+				neg_grad_k = this->f->negative_gradient(x_k, f_value);
 				H_k = identity;
 
 				real temp = 0.0;
@@ -231,21 +235,21 @@ namespace Deng
 				{
 					delta_x_k = alpha_k*(H_k*neg_grad_k);
 					x_kp1 = x_k + delta_x_k;
-					neg_grad_kp1 = f->negative_gradient(x_kp1, f_value);
+					neg_grad_kp1 = this->f->negative_gradient(x_kp1, f_value);
 					y_k = neg_grad_k - neg_grad_kp1;
 
 					temp = arma::as_scalar(y_k.t()*delta_x_k);
 					H_kp1 = (identity - delta_x_k*y_k.t() / temp)*H_k*(identity - y_k*delta_x_k.t() / temp) + delta_x_k*delta_x_k.t() / temp;
-					
+
 					gradient_norm = sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1));
 					coordinate_norm = sqrt(arma::as_scalar(x_kp1.t()*x_kp1));
 
-					if (coordinate_norm > 1.0*_dim_para && gradient_norm > _epsilon_gradient)
+					if (coordinate_norm > 1.0*this->_dim_para && gradient_norm > this->_epsilon_gradient)
 					{
 						std::cout << "too far away from origin, start with random position near origin\n";
 						x_k.randu();
-						x_k = sqrt(_dim_para)*2.0*(x_k - 0.5);
-						neg_grad_k = f->negative_gradient(x_k, f_value);
+						x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5);
+						neg_grad_k = this->f->negative_gradient(x_k, f_value);
 						H_k = identity;
 						continue;
 					}
@@ -254,10 +258,10 @@ namespace Deng
 						std::cerr << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
 						std::cout << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
 						x_k.randu();
-						x_k = sqrt(_dim_para)*2.0*(x_k - 0.5);
-						neg_grad_k = f->negative_gradient(x_k, f_value);
+						x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5);
+						neg_grad_k = this->f->negative_gradient(x_k, f_value);
 						H_k = identity;
-						gradient_norm = 10.0*_epsilon_gradient;
+						gradient_norm = 10.0*this->_epsilon_gradient;
 						continue;
 					}
 
@@ -268,7 +272,7 @@ namespace Deng
 					H_k = H_kp1;
 					neg_grad_k = neg_grad_kp1;
 					x_k = x_kp1;
-				} while (gradient_norm > _epsilon_gradient);
+				} while (gradient_norm > this->_epsilon_gradient);
 
 				return x_kp1;
 			}

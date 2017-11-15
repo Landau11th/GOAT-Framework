@@ -23,17 +23,17 @@ template <typename Field, typename Parameter>
 Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(const Deng::Col_vector<arma::Mat<Field>>& U, const unsigned int t_index, const bool half_time) const
 {
     Parameter shift = half_time ? 0.5 : 0.0;//0 or 1???
-	
+
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
-	
+
 	//+1 for the additional U with original time evolution
     Deng::Col_vector<arma::Mat<Field>> k(_dim_para + 1);
 
     Deng::Col_vector<arma::Mat<Field>> iH_and_partial_H = Dynamics(t);
-    
+
     k[0] = iH_and_partial_H[0]*U[0];
-		
+
     for(unsigned int i = 1; i <= _dim_para; ++i)
     {
 		//std::cout << iH_and_partial_H[i];
@@ -69,7 +69,7 @@ arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(const arma::Mat<Fie
 	Parameter t = (t_index + shift)*_dt;
 
 	arma::Mat<Field> iH = Dynamics_U(t);
-  
+
 	return iH*position;
 
 }
@@ -162,10 +162,10 @@ template class Deng::GOAT::GOAT_Target_1st_order<std::complex<double>, double>;
 template<typename Field, typename Parameter>
 Parameter GOAT_Target_1st_order<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given) const
 {
-	H_and_partial_H_pt->Update_parameters(coordinate_given);
-	RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
-	RK_pt->Evolve_to_final_U(*H_and_partial_H_pt);
-	
+	this->H_and_partial_H_pt->Update_parameters(coordinate_given);
+	this->RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
+	this->RK_pt->Evolve_to_final_U(*H_and_partial_H_pt);
+
 	//Parameter value;
 	//negative_gradient(coordinate_given, value);
 	////std::cout << value << std::endl;
@@ -211,16 +211,16 @@ template class Deng::GOAT::GOAT_Target_1st_order_no_phase<std::complex<double>, 
 template<typename Field, typename Parameter>
 Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const arma::Col<Parameter>& coordinate_given) const
 {
-	H_and_partial_H_pt->Update_parameters(coordinate_given);
-	RK_pt->Prep_for_H_U(*H_and_partial_H_pt);
-	RK_pt->Evolve_to_final_U(*H_and_partial_H_pt);
+	this->H_and_partial_H_pt->Update_parameters(coordinate_given);
+	this->RK_pt->Prep_for_H_U(*(this->H_and_partial_H_pt));
+	this->RK_pt->Evolve_to_final_U(*(this->H_and_partial_H_pt));
 
 	//Parameter value;
 	//negative_gradient(coordinate_given, value);
 	////std::cout << value << std::endl;
-	arma::trace(unitary_goal.t()*RK_pt->next_state[0]);
-	auto UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
-	
+	//arma::trace((this->unitary_goal.t())*(this->RK_pt->next_state[0]));
+	auto UU_diag = arma::diagvec(initial_states.t() * (this->unitary_goal.t())*(this->RK_pt->next_state[0]) * initial_states);
+
 	//std::cout << arma::as_scalar(UU_diag.t()*UU_diag) << std::endl;
 	return -arma::as_scalar(UU_diag.t()*UU_diag).real();
 
@@ -228,13 +228,13 @@ Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const
 template<typename Field, typename Parameter>
 arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const
 {
-	H_and_partial_H_pt->Update_parameters(coordinate_given);
-	RK_pt->Prep_for_H(*H_and_partial_H_pt);
-	RK_pt->Evolve_to_final(*H_and_partial_H_pt);
+	this->H_and_partial_H_pt->Update_parameters(coordinate_given);
+	this->RK_pt->Prep_for_H(*(this->H_and_partial_H_pt));
+	this->RK_pt->Evolve_to_final(*(this->H_and_partial_H_pt));
 
 	//give function value
 	//DO NOT USE auto here. It causes error. Reason is unknown
-	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[0] * initial_states);
+	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * (this->unitary_goal.t())*(this->RK_pt->next_state[0]) * initial_states);
 	//auto UU_diag = arma::diagvec(unitary_goal.t()*RK_pt->next_state[0]);
 
 	Field trace_of_UUUU = arma::as_scalar(UU_diag.t()*UU_diag).real();
@@ -247,14 +247,14 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 	//	std::cout << RK_pt->next_state[0] << std::endl;
 	//	assert(false && "GOAT_RK4 generates NaN!\n");
 	//}
-	
+
 	//calc gradient
 	arma::Col<Parameter> gradient = coordinate_given;
 	gradient.zeros();
 
 	for (unsigned int i = 0; i < gradient.n_elem; ++i)
 	{
-		arma::Col<Field> UpartialU_diag = -arma::diagvec(initial_states.t() * unitary_goal.t()*RK_pt->next_state[i+1] * initial_states);
+		arma::Col<Field> UpartialU_diag = -arma::diagvec(initial_states.t() * (this->unitary_goal.t())*(this->RK_pt->next_state[i+1]) * initial_states);
 		gradient[i] = 2.0*arma::as_scalar(UU_diag.t()*UpartialU_diag).real();
 	}
 
