@@ -63,8 +63,8 @@ public:
 	virtual arma::Mat<Field> H_control(Parameter t) const;
 
 	//give the dynamics 
-	virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(Parameter t) const override;
-	virtual arma::Mat<Field> Dynamics_U(Parameter t) const override;
+	virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(const Parameter t) const override;
+	virtual arma::Mat<Field> Dynamics_U(const Parameter t) const override;
 
 	virtual ~Transverse_Ising() = default;
 };

@@ -20,23 +20,9 @@ Hamiltonian<Field, Parameter>::Hamiltonian(unsigned int N, unsigned int N_t, Par
     }
 }
 template <typename Field, typename Parameter>
-Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Deng::Col_vector<arma::Mat<Field>> U, unsigned int t_index, bool half_time) const
+Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(const Deng::Col_vector<arma::Mat<Field>>& U, const unsigned int t_index, const bool half_time) const
 {
-    Parameter shift = half_time ? 0.5 : 0.0;
-    //0 or 1???
-
-
-	int count_nan = 0;
-	for (int i = 0; i < U.dimension(); ++i)
-	{
-		if (U[i].has_nan())
-		{
-			std::cout << i << " th component of input U has NaN at " << t_index << " th step\n";
-			++count_nan;
-		}
-	}
-	assert(count_nan == 0 && "Derivative of Hamiltonian generates NaN\n");
-
+    Parameter shift = half_time ? 0.5 : 0.0;//0 or 1???
 	
 	//need to test the data type
     Parameter t = (t_index + shift)*_dt;
@@ -47,7 +33,7 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
     Deng::Col_vector<arma::Mat<Field>> iH_and_partial_H = Dynamics(t);
     
     k[0] = iH_and_partial_H[0]*U[0];
-
+		
     for(unsigned int i = 1; i <= _dim_para; ++i)
     {
 		//std::cout << iH_and_partial_H[i];
@@ -55,10 +41,23 @@ Deng::Col_vector<arma::Mat<Field>> Hamiltonian<Field, Parameter>::Derivative(Den
 		k[i] = iH_and_partial_H[i]*U[0] + iH_and_partial_H[0]*U[i];
     }
 
+	//{
+	//	int count_nan = 0;
+	//	for (int i = 0; i < k.dimension(); ++i)
+	//	{
+	//		if (k[i].has_inf())
+	//		{
+	//			std::cout << i << " th component of k has inf at " << t_index << " th step" << std::endl;
+	//			++count_nan;
+	//		}
+	//	}
+	//	assert(count_nan == 0 && "Derivative of Hamiltonian generates NaN\n");
+	//}
+
     return k;
 }
 template <typename Field, typename Parameter>
-arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(arma::Mat<Field> position, unsigned int t_index, bool half_time) const
+arma::Mat<Field> Hamiltonian<Field, Parameter>::Derivative_U(const arma::Mat<Field>& position, const unsigned int t_index, const bool half_time) const
 {
 	Parameter shift = half_time ? 0.5 : 0.0;
 	// if(half_time)
@@ -240,14 +239,14 @@ arma::Col<Parameter> GOAT_Target_1st_order_no_phase<Field, Parameter>::negative_
 
 	Field trace_of_UUUU = arma::as_scalar(UU_diag.t()*UU_diag).real();
 	function_value = -trace_of_UUUU.real();
-	if (function_value != function_value)
-	{
-		std::cout << UU_diag << std::endl;
-		std::cout << initial_states << std::endl;
-		std::cout << unitary_goal << std::endl;
-		std::cout << RK_pt->next_state[0] << std::endl;
-		assert(false && "GOAT_RK4 generates NaN!\n");
-	}
+	//if (function_value != function_value)
+	//{
+	//	std::cout << UU_diag << std::endl;
+	//	std::cout << initial_states << std::endl;
+	//	std::cout << unitary_goal << std::endl;
+	//	std::cout << RK_pt->next_state[0] << std::endl;
+	//	assert(false && "GOAT_RK4 generates NaN!\n");
+	//}
 	
 	//calc gradient
 	arma::Col<Parameter> gradient = coordinate_given;

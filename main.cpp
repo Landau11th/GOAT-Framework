@@ -1,7 +1,8 @@
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <cmath>
 #include <ctime>
-
 
 #include <armadillo>
 #include "Optimization.hpp"
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
 	const unsigned int dim_para_each_direction = std::stoi(argv[2]);
 	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
 	const unsigned int dim_para = (2 * num_spinor +1)*dim_para_each_direction;
-	const unsigned int rand = std::stoi(argv[3]);
+	const real rand = std::stof(argv[3]);
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
 	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
 	const unsigned int N_t = 2048;
 	const real tau = 3.0;
 	const real epsilon = 1.0/1024;
-	const real epsilon_gradient = dim_hamil* epsilon;
+	const real epsilon_gradient = sqrt(dim_hamil)*epsilon;
 	const unsigned int conj_grad_max_iter = 100;
 
 
@@ -97,13 +98,110 @@ int main(int argc, char** argv)
 	//appoint the 1D search method
 	//Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	//Conj_Grad.Opt_1D = Deng::Optimization::My_1D_foward_method<real>;
+	
+
+	//arma::Col<real> start_error = { 3.8956e+02, 2.5888e+02,	1.7711e+02,	1.1133e+02,	1.3407e+02,	3.1740e+02,	1.8245e+02,
+	//								1.7379e+02,	3.8170e+02,	1.2061e+02,	2.3854e+02,	2.9739e+01,	2.0196e+02,	3.5960e+02 };
+
+	//target.function_value(start_error);
+
+	std::ofstream outputfile;
+	std::string filename;
+	filename = std::to_string(num_spinor) + "spins_" + std::to_string(dim_para) + "paras_t_dep_";
+	//create output file name with time stamp, to avoid being covered
+	{
+		time_t t = time(0);   // get time now
+		struct tm * now = localtime(&t);
+		char buffer[80];
+		strftime(buffer, 80, "%Y%m%d-%H%M%S", now);
+		filename = filename + buffer + ".dat";
+	}
+	outputfile.open(filename, std::ios_base::app);
+
+
+	arma::Col<real> current_min_coordinate(dim_para);
+	real current_min;
 	//generate initial coordinate to start
 	arma::arma_rng::set_seed(time(nullptr));
-	arma::Col<real> start(dim_para, arma::fill::randn);
+	arma::Col<real> start(dim_para, arma::fill::randu);
 	//how wide the initial coordinate we choose
 	start = rand*start;
 
-	Quasi_NT.BFGS(start);
+	//start search
+	bool is_stationary = false;
+	bool is_global_min = true;
+	do {
+		is_global_min = true;
+
+		do {
+			//reached a position
+			current_min_coordinate = Quasi_NT.BFGS(start);
+			current_min = target.function_value(current_min_coordinate);
+
+			//once reach the 0 negative gradient
+			//randomly pick several directions to check if it's only a stationary point
+			is_stationary = false;
+
+			//set up random direction
+			arma::Col<real> random_search_direction = current_min_coordinate;
+
+			//number of trials should increases with dimention of parametric space
+			for (unsigned int i = 0; i < 2 * dim_para; ++i)
+			{
+				//randomly pick a direction
+				random_search_direction.randn();
+
+				//go through any 1D search
+				real lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+				if (lambda < 0)
+				{
+					random_search_direction = -random_search_direction;
+					lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+				}
+
+				//new function value, which should be <= the old one
+				real temp_func_value = target.function_value(current_min_coordinate + lambda*random_search_direction);
+
+				if (temp_func_value <= (current_min - epsilon / 256.0))
+				{
+					//this minimum is only a stationary point
+					is_stationary = true;
+					start = current_min_coordinate + lambda*random_search_direction;
+					std::cout << "\n\nNot a (local) minimum\n\n";
+					break;
+				}
+			}
+			if (!is_stationary)
+			{
+				std::cout << "\nReach (local) minimum" << std::endl;
+				outputfile << "Reach(local) minimum of " << current_min << "\n";
+				outputfile << current_min_coordinate.t() << "\n";
+			}
+
+		} while (is_stationary);
+
+		if (current_min > -((real)dim_hamil*3.0/4.0))
+		{
+			std::cout << "Local min is not close to idea gloabla min, start over with random initial position\n";
+			start.randn();
+			start = sqrt(dim_para) * start;
+			is_global_min = false;
+		}
+		//since we know the possible global minimum
+		else if (current_min > -((real)dim_hamil - (8.0*epsilon)))
+		{
+			std::cout << "Local min is close to idea global min, start over with a small shift\n";
+			start.randn();
+			start = current_min_coordinate + (1 / 16.0)*start;
+			is_global_min = false;
+		}
+		else
+		{
+			std::cout << "Good enough!\n";
+			is_global_min = true;
+		}
+
+	} while (!is_global_min);
 
 	//Deng::Optimization::Newton_Find_Min<real> NT_search_hess(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	//NT_search_hess.Assign_Target_Function(&target_finite_diff);
@@ -137,56 +235,6 @@ int main(int argc, char** argv)
 	//	start = NT_search.Newton_1st_order(start);
 
 	//} while (target.function_value(start) - NT_search.Value_of_target_value() > new_epsilon);
-	
-	
-
-	
-	//bool is_stationary = true;
-
-	//while (is_stationary)
-	//{
-	//	//redundant calculation...
-	//	auto current_min_coordinate = Conj_Grad.Conj_Grad_Search(start);
-	//	auto current_min_previous_search_direction = Conj_Grad.previous_search_direction;
-	//	auto current_min = target.function_value(current_min_coordinate);
-	//	
-	//	
-	//	is_stationary = false;
-	//	//move the coordinate around
-	//	//to see if it is only a stationary point
-	//	start = current_min_coordinate;
-	//	for (int i = 0; i < 2*dim_hamil; ++i)
-	//	{
-	//		//randomly pick a direction
-	//		arma::Col<real> shift(dim_para, arma::fill::randu);
-	//		auto temp_search_direction = Conj_Grad.previous_search_direction;
-	//		//real scale = arma::as_scalar(temp_search_direction.t()*temp_search_direction);
-	//		//shift = sqrt(scale)*shift;
-	//		//shift = shift - arma::as_scalar(temp_search_direction.t()*shift) / scale * temp_search_direction;
-	//		//real lambda = Deng::Optimization::OneD_Golden_Search<real>(start, temp_search_direction, &target, 200, epsilon);
-	//		real lambda = Deng::Optimization::My_1D_foward_method<real>(start, temp_search_direction, &target, 200, epsilon);
-	//		if (lambda<0)
-	//			lambda = Deng::Optimization::OneD_Golden_Search<real>(start, -temp_search_direction, &target, 200, epsilon);
-
-	//		real temp_func_value = target.function_value(current_min_coordinate + lambda*shift);
-
-	//		if (temp_func_value < current_min)
-	//		{
-	//			//this minimum is only a stationary point
-	//			is_stationary = true;
-	//			start = current_min_coordinate + lambda*shift;
-	//			std::cout << "\n\nNot a (local) minimum\n\n";
-
-	//			break;
-	//		}
-	//	}
-
-	//	if (!is_stationary)
-	//	{
-	//		std::cout << "\nReach (local) minimum" << std::endl;
-	//	}	
-	//}
-
 
     return 0;
 }

@@ -6,11 +6,11 @@ using namespace Deng;
 //explicit instantiations
 
 //template class Col_vector<int>;
-//template class Col_vector<long double>;
 template class Col_vector<float>;
 template class Col_vector<double>;
 template class Col_vector<std::complex<float> >;
 template class Col_vector<std::complex<double> >;
+
 //block vectors
 template class Col_vector<arma::Mat<float> >;
 template class Col_vector<arma::Mat<double> >;

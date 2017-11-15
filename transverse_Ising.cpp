@@ -106,6 +106,7 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::control_field(Pa
 template<typename Field, typename Parameter>
 Parameter Transverse_Ising<Field, Parameter>::control_field_component(Parameter t, unsigned int para_idx_begin) const
 {
+	assert(para_idx_begin%_dim_para_each_direction == 0 && "error in control_field_component");
 	Parameter component = 0.0;
 	unsigned int mode, trig;
 	for (unsigned int i = 0; i < _dim_para_each_direction; ++i)
@@ -113,7 +114,7 @@ Parameter Transverse_Ising<Field, Parameter>::control_field_component(Parameter 
 		mode = i / 2 + 1;
 		trig = i % 2;
 		//control field vanish at boundary
-		component += trig == 0 ? parameters(i + para_idx_begin) * sin(mode * _omega * t) : parameters(i + para_idx_begin) * (cos(mode * _omega * t) - 1);
+		component += trig == 0 ? parameters(i + para_idx_begin) * sin(mode * _omega * t) : parameters(i + para_idx_begin) * (cos(mode * _omega * t) - 1.0);
 	}
 	return component;
 }
@@ -125,7 +126,7 @@ arma::Mat<Field> Transverse_Ising<Field, Parameter>::H_control(Parameter t) cons
 }
 //dynamics of GOAT
 template<typename Field, typename Parameter>
-Deng::Col_vector<arma::Mat<Field>> Transverse_Ising<Field, Parameter>::Dynamics(Parameter t) const
+Deng::Col_vector<arma::Mat<Field>> Transverse_Ising<Field, Parameter>::Dynamics(const Parameter t) const
 {
 	Deng::Col_vector<arma::Mat<Field> > iH_and_partial_H(_dim_para + 1);
 
@@ -148,7 +149,7 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising<Field, Parameter>::Dynamics(
 }
 //dynamics of plain Hamiltonian
 template<typename Field, typename Parameter>
-arma::Mat<Field> Transverse_Ising<Field, Parameter>::Dynamics_U(Parameter t) const
+arma::Mat<Field> Transverse_Ising<Field, Parameter>::Dynamics_U(const Parameter t) const
 {
 	//return (-imag_i / _hbar)*(H_0(t) + H_control(t));
 	return (-imag_i)*(H_0(t) + H_control(t));
@@ -250,9 +251,9 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 		unsigned int spin_index = (i - 1) / (2 * _dim_para_each_direction);
 		//could be generalize?
 		//double original_para = parameters[i];
-		parameters[i - 1] += 0.0078125;
+		parameters(i - 1) += 0.0078125;
 		Deng::Col_vector<Parameter> partial_control = local_control_field(t, spin_index);
-		parameters[i - 1] -= 0.0078125;
+		parameters(i - 1) -= 0.0078125;
 		partial_control = (1 / 0.0078125)*(partial_control - local_control_field(t, spin_index));
 
 		iH_and_partial_H[i] = (-imag_i)*(partial_control^S_each[spin_index]);
@@ -261,9 +262,9 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 	{
 		//could be generalize?
 		//double original_para = parameters[i];
-		parameters[i - 1] += 0.0078125;
+		parameters(i - 1) += 0.0078125;
 		Parameter partial_control = control_field_component(t, _dim_para - _dim_para_each_direction);
-		parameters[i - 1] -= 0.0078125;
+		parameters(i - 1) -= 0.0078125;
 		partial_control = (1 / 0.0078125)*(partial_control - control_field_component(t, _dim_para - _dim_para_each_direction));
 
 		iH_and_partial_H[i] = (-imag_i)*(partial_control*S_total[0]);

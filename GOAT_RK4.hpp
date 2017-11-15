@@ -41,16 +41,16 @@ namespace Deng
             Hamiltonian(unsigned int N, unsigned int N_t, Parameter tau, unsigned int dim_para = 0);
             
 			//calculate the derivative of U and partial U in a block vector form
-            virtual Deng::Col_vector<arma::Mat<Field>> Derivative (Deng::Col_vector<arma::Mat<Field> > position, unsigned int t_index, bool half_time) const;
+            virtual Deng::Col_vector<arma::Mat<Field>> Derivative (const Deng::Col_vector<arma::Mat<Field>>& position, const unsigned int t_index, const bool half_time) const;
             //invoked by member function Derivative; return H and partial_H in a block vector form
             //pure-virtual function, must be implemented in instances!!!!
-            virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(Parameter t) const = 0;
+            virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(const Parameter t) const = 0;
 
 			//calculate the derivative of U only
-			virtual arma::Mat<Field> Derivative_U(arma::Mat<Field> position, unsigned int t_index, bool half_time) const;
+			virtual arma::Mat<Field> Derivative_U(const arma::Mat<Field>& position, const unsigned int t_index, const bool half_time) const;
 			//invoked by member function Derivative; return H only
 			//pure-virtual function, must be implemented in instances!!!!
-			virtual arma::Mat<Field> Dynamics_U(Parameter t) const = 0;
+			virtual arma::Mat<Field> Dynamics_U(const Parameter t) const = 0;
             
 			
 			//empty virtual destructor

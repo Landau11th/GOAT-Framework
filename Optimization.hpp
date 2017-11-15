@@ -209,21 +209,25 @@ namespace Deng
 			Quasi_Newton(unsigned int dim_para, real epsilon, unsigned int max_iteration, real epsilon_gradient)
 				: Min_Know_Gradient<real>(dim_para, epsilon, max_iteration, epsilon_gradient)
 			{
-				identity.eye(dim_para, dim_para);
+				identity.eye(_dim_para, _dim_para);
 			};
 
 			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const
 			{
-				auto x_k = start_coordinate;
+				assert(start_coordinate.size() == _dim_para && "coordinate dimention mismatch in BFGS!");
+				x_k = start_coordinate;
 				real f_value = 0;
 				neg_grad_k = f->negative_gradient(x_k, f_value);
 				H_k = identity;
 
 				real temp = 0.0;
 
-				real alpha_k = 0.5;
+				real gradient_norm = 0.0;
+				real coordinate_norm = 0.0;
 
-				for (int i = 0; i < 50; ++i)
+				real alpha_k = 0.125;
+
+				do
 				{
 					delta_x_k = alpha_k*(H_k*neg_grad_k);
 					x_kp1 = x_k + delta_x_k;
@@ -232,15 +236,39 @@ namespace Deng
 
 					temp = arma::as_scalar(y_k.t()*delta_x_k);
 					H_kp1 = (identity - delta_x_k*y_k.t() / temp)*H_k*(identity - y_k*delta_x_k.t() / temp) + delta_x_k*delta_x_k.t() / temp;
+					
+					gradient_norm = sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1));
+					coordinate_norm = sqrt(arma::as_scalar(x_kp1.t()*x_kp1));
 
-					std::cout << "new function value: " << f_value << " with gradient norm" << sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1))<< std::endl;
+					if (coordinate_norm > 1.0*_dim_para && gradient_norm > _epsilon_gradient)
+					{
+						std::cout << "too far away from origin, start with random position near origin\n";
+						x_k.randu();
+						x_k = sqrt(_dim_para)*2.0*(x_k - 0.5);
+						neg_grad_k = f->negative_gradient(x_k, f_value);
+						H_k = identity;
+						continue;
+					}
+					else if (f_value != f_value)
+					{
+						std::cerr << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
+						std::cout << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
+						x_k.randu();
+						x_k = sqrt(_dim_para)*2.0*(x_k - 0.5);
+						neg_grad_k = f->negative_gradient(x_k, f_value);
+						H_k = identity;
+						gradient_norm = 10.0*_epsilon_gradient;
+						continue;
+					}
+
+					std::cout << "new function value: " << f_value << " with gradient norm " << gradient_norm << std::endl;
 					std::cout << x_kp1.t() << std::endl;
 
 
 					H_k = H_kp1;
 					neg_grad_k = neg_grad_kp1;
 					x_k = x_kp1;
-				}
+				} while (gradient_norm > _epsilon_gradient);
 
 				return x_kp1;
 			}
