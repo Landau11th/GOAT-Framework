@@ -17,7 +17,7 @@ namespace Deng
 
 		//template<typename Field, typename Parameter>
 		//class GOAT_Target_1st_order;
-		
+
 		//the abstract base class for (almost) all Hamiltonians using GOAT
         template <typename Field, typename Parameter>
         class Hamiltonian//defined the most basic Hamiltonian, with only dimension, time parameters and the parameter space dimension
@@ -39,27 +39,27 @@ namespace Deng
             };
             //input necessary parameters
             Hamiltonian(unsigned int N, unsigned int N_t, Parameter tau, unsigned int dim_para = 0);
-            
+
 			//calculate the derivative of U and partial U in a block vector form
-            virtual Deng::Col_vector<arma::Mat<Field>> Derivative (Deng::Col_vector<arma::Mat<Field> > position, unsigned int t_index, bool half_time) const;
+            virtual Deng::Col_vector<arma::Mat<Field>> Derivative (const Deng::Col_vector<arma::Mat<Field>>& position, const unsigned int t_index, const bool half_time) const;
             //invoked by member function Derivative; return H and partial_H in a block vector form
             //pure-virtual function, must be implemented in instances!!!!
-            virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(Parameter t) const = 0;
+            virtual Deng::Col_vector<arma::Mat<Field>> Dynamics(const Parameter t) const = 0;
 
 			//calculate the derivative of U only
-			virtual arma::Mat<Field> Derivative_U(arma::Mat<Field> position, unsigned int t_index, bool half_time) const;
+			virtual arma::Mat<Field> Derivative_U(const arma::Mat<Field>& position, const unsigned int t_index, const bool half_time) const;
 			//invoked by member function Derivative; return H only
 			//pure-virtual function, must be implemented in instances!!!!
-			virtual arma::Mat<Field> Dynamics_U(Parameter t) const = 0;
-            
-			
+			virtual arma::Mat<Field> Dynamics_U(const Parameter t) const = 0;
+
+
 			//empty virtual destructor
             virtual ~Hamiltonian() = default;
             //for RK4 and conjugate gradient to use the parameters
             friend class RK4<Field, Parameter>;
             //friend class GOAT_Target_1st_order<Field, Parameter>;
         };
-		
+
 		//RK4 specialized for GOAT
         template <typename Field, typename Parameter>
         class RK4//Runge-Kutta 4th order, applied to GOAT method only
@@ -89,14 +89,14 @@ namespace Deng
 		class GOAT_Target_1st_order : public Deng::Optimization::Target_function<Parameter>
 		{
 		public:
-			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
-			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
-			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient)
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) const override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const override;
+			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient) const override
 			{
 				assert(false && "Hessian is not known for class GOAT_Target_1st_order!\n");
 				return 0;
 			};
-			virtual void higher_order(const arma::Col<Parameter>& coordinate_given, const Parameter order)
+			virtual void higher_order(const arma::Col<Parameter>& coordinate_given, const Parameter order) const override
 			{
 				assert(false && "Higher order derivatives are not known for class GOAT_Target_1st_order!\n");
 			};
@@ -121,10 +121,10 @@ namespace Deng
 		class GOAT_Target_1st_order_no_phase : public Deng::GOAT::GOAT_Target_1st_order<Field, Parameter>
 		{
 		public:
-			using GOAT_Target_1st_order::GOAT_Target_1st_order;
+			using GOAT_Target_1st_order<Field, Parameter>::GOAT_Target_1st_order;
 			//new function value. calculate the probabitlity and sum over.
-			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) override;
-			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) override;
+			virtual Parameter function_value(const arma::Col<Parameter>& coordinate_given) const override;
+			virtual arma::Col<Parameter> negative_gradient(const arma::Col<Parameter>& coordinate_given, Parameter &function_value) const override;
 
 			virtual void Set_Initial_States(const arma::Mat<Field> &initial_states_desired)
 			{
@@ -132,7 +132,36 @@ namespace Deng
 			};
 			arma::Mat<Field> initial_states;
 		};
-		
+
+
+		template<typename Field, typename Parameter>
+		class GOAT_Target_2nd_order_no_phase : public Deng::GOAT::GOAT_Target_1st_order_no_phase<Field, Parameter>
+		{
+		public:
+			using GOAT_Target_1st_order_no_phase<Field, Parameter>::GOAT_Target_1st_order_no_phase;
+			//calculated Hessian approximately
+			virtual arma::Mat<Parameter> Hessian(const arma::Col<Parameter>& coordinate_given, Parameter &function_value, arma::Col<Parameter> &negative_gradient) const override
+			{
+				negative_gradient = this->negative_gradient(coordinate_given, function_value);
+
+				arma::Col<Parameter> finite_diff = coordinate_given;
+				const unsigned int dim_coordinate = coordinate_given.size();
+				arma::Mat<Parameter> hess(dim_coordinate, dim_coordinate, arma::fill::zeros);
+
+				for (unsigned int i = 0; i < dim_coordinate; ++i)
+				{
+					finite_diff.zeros();
+					finite_diff(i) = 0.0078125;
+
+					hess.col(i) = this->negative_gradient(coordinate_given + finite_diff, function_value) - negative_gradient;
+				}
+				hess = -64.0*(hess+hess.t());
+				//hess = -128.0*hess;
+
+				return hess;
+			};
+		};
+
     }
 }
 

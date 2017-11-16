@@ -126,11 +126,13 @@ namespace Deng
         //element access
         Field& operator[](unsigned int idx)
         {
-            return _vec[idx];
+			assert(idx < _dim && "error in []!");
+			return _vec[idx];
         }
         const Field& operator[](unsigned int idx) const
         {
-            return _vec[idx];
+			assert(idx < _dim && "error in []!");
+			return _vec[idx];
         }
 
 
