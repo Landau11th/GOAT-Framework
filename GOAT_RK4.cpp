@@ -219,7 +219,7 @@ Parameter GOAT_Target_1st_order_no_phase<Field, Parameter>::function_value(const
 	//negative_gradient(coordinate_given, value);
 	////std::cout << value << std::endl;
 	//arma::trace((this->unitary_goal.t())*(this->RK_pt->next_state[0]));
-	auto UU_diag = arma::diagvec(initial_states.t() * (this->unitary_goal.t())*(this->RK_pt->next_state[0]) * initial_states);
+	arma::Col<Field> UU_diag = arma::diagvec(initial_states.t() * (this->unitary_goal.t())*(this->RK_pt->next_state[0]) * initial_states);
 
 	//std::cout << arma::as_scalar(UU_diag.t()*UU_diag) << std::endl;
 	return -arma::as_scalar(UU_diag.t()*UU_diag).real();
