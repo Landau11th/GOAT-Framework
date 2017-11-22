@@ -74,14 +74,23 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) c
 	//B_field[1] = _B_y_max;
 	//B_field[2] = sin(0.25*_omega*t)*_B_z_max;
 
-	B_field[0] = this->_B_x_max *(1 + t / this->_tau);
-	B_field[1] = 0.0;
-	B_field[2] = this->_B_z_max *t / this->_tau *t / this->_tau;
-
-	//constant B field
-	//B_field[0] = _B_x_max;
+	//B_field[0] = this->_B_x_max *(1 + t / this->_tau);
 	//B_field[1] = 0.0;
-	//B_field[2] = _B_z_max;
+	//B_field[2] = this->_B_z_max *t / this->_tau *t / this->_tau;
+
+	//B_field[0] = this->_B_x_max ;
+	//B_field[1] = 0.0;
+	//B_field[2] = this->_B_z_max *t / this->_tau;
+
+	////constant B field
+	//B_field[0] = this->_B_x_max;
+	//B_field[1] = 0.0;
+	//B_field[2] = this->_B_z_max;
+
+	//benchmark
+	B_field[0] = this->_B_x_max;
+	B_field[1] = 0.0;
+	B_field[2] = this->_B_z_max*(t / this->_tau)*(1 + t / this->_tau);
 
 	return B_field;
 }
@@ -109,14 +118,18 @@ Parameter Transverse_Ising<Field, Parameter>::control_field_component(const Para
 {
 	assert(para_idx_begin%_dim_para_each_direction == 0 && "error in control_field_component");
 	Parameter component = 0.0;
+	const unsigned int if_has_const = _dim_para_each_direction % 2;
 	unsigned int mode, trig;
-	for (unsigned int i = 0; i < _dim_para_each_direction; ++i)
+	for (unsigned int i = 0; i < (_dim_para_each_direction - if_has_const); ++i)
 	{
 		mode = i / 2 + 1;
 		trig = i % 2;
 		//control field vanish at boundary
 		component += trig == 0 ? this->parameters(i + para_idx_begin) * sin(mode * _omega * t) : this->parameters(i + para_idx_begin) * (cos(mode * _omega * t) - 1.0);
 	}
+	if (if_has_const)
+		component += _dim_para_each_direction - 1;
+
 	return component;
 }
 //control Hamiltonian

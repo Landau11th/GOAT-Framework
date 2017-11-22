@@ -117,6 +117,9 @@ int main(int argc, char** argv)
 		filename = filename + buffer + ".dat";
 	}
 	outputfile.open(filename, std::ios_base::app);
+	//set output format
+	outputfile.precision(10);
+	outputfile.setf(std::ios::fixed);
 
 
 	arma::Col<real> current_min_coordinate(dim_para);
@@ -126,6 +129,14 @@ int main(int argc, char** argv)
 	arma::Col<real> start(dim_para, arma::fill::randu);
 	//how wide the initial coordinate we choose
 	start = rand*start;
+
+	//start = { -6.6846 ,   0.7947 ,-1.8900, -6.1079 ,
+	//	-1.1350, -1.0042 ,-1.2696  ,  1.4903   ,
+	//	6.5364 ,   0.0558, -0.4509 ,   7.2567,
+	//	-10.6137, -0.9592, -3.4418 ,   2.8441,
+	//	-1.3137  ,  0.0816, -3.4504, -8.6243 ,
+	//	-5.3629 ,-1.8439 ,-0.9611 ,   3.9956   ,
+	//	1.7500   , 0.9611  ,  3.9424 ,-0.9289 };
 
 	//start search
 	bool is_stationary = false;
@@ -146,7 +157,7 @@ int main(int argc, char** argv)
 			arma::Col<real> random_search_direction = current_min_coordinate;
 
 			//number of trials should increases with dimention of parametric space
-			for (unsigned int i = 0; i < 2 * dim_para; ++i)
+			for (unsigned int i = 0; i < dim_para; ++i)
 			{
 				//randomly pick a direction
 				random_search_direction.randn();
@@ -176,6 +187,7 @@ int main(int argc, char** argv)
 				std::cout << "\nReach (local) minimum" << std::endl;
 				outputfile << "Reach(local) minimum of " << current_min << "\n";
 				outputfile << current_min_coordinate.t() << "\n";
+				//current_min_coordinate.t().raw_print();
 			}
 
 		} while (is_stationary);

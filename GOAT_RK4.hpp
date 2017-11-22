@@ -35,7 +35,10 @@ namespace Deng
         public:
             virtual void Update_parameters(arma::Col<Parameter> new_para) const
             {
-                parameters = new_para;
+				if (new_para.size() == _dim_para)
+					parameters = new_para;
+				else
+					std::cerr << "wrong dimension for parameter input in " << __func__ << "\n";
             };
             //input necessary parameters
             Hamiltonian(unsigned int N, unsigned int N_t, Parameter tau, unsigned int dim_para = 0);
