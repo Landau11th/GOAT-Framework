@@ -10,8 +10,8 @@
 #include "GOAT_RK4.hpp"
 #include "Deng_vector.hpp"
 
-#define ISING_CONTROL_INDIVIDUAL
 #include "transverse_Ising.hpp"
+#include "miscellaneous.hpp"
 
 void Verify_level_crossing();
 
@@ -106,21 +106,20 @@ int main(int argc, char** argv)
 
 	//target.function_value(start_error);
 
+	//output to file
 	std::ofstream outputfile;
 	std::string filename;
+	//set file name
 	filename = std::to_string(num_spinor) + "spins_" + std::to_string(dim_para) + "paras_t_dep_";
-	//create output file name with time stamp, to avoid being covered
-	{
-		time_t t = time(0);   // get time now
-		struct tm * now = localtime(&t);
-		char buffer[80];
-		strftime(buffer, 80, "%Y%m%d-%H%M%S", now);
-		filename = filename + buffer + ".dat";
-	}
+	filename = filename + Deng::Misc::TimeStamp() + ".dat";
+	//set output & format
 	outputfile.open(filename, std::ios_base::app);
-	//set output format
 	outputfile.precision(10);
 	outputfile.setf(std::ios::fixed);
+	//indicate system specs at the beginning
+	outputfile << "Number of spin: " << num_spinor << std::endl;
+	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
+	outputfile << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 
 
 	arma::Col<real> current_min_coordinate(dim_para);

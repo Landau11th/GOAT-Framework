@@ -107,8 +107,10 @@ namespace Deng
         {
             return _dim;
         }
-        //destructor. make it virtual in case we need to inherit
-        virtual ~Col_vector();
+        //destructor. 
+		//make it virtual in case we need to inherit
+		//virtual
+        ~Col_vector();
 
 
         //overloading operators
