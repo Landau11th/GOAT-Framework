@@ -46,3 +46,5 @@ and the gradient should be close to 0
 
 
 plan to try Newton method. How to choose gamma?
+
+remove the contents in virtual destructor of GOAT target function

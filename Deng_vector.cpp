@@ -64,6 +64,7 @@ Col_vector<Field>::~Col_vector()
 {
     //std::cout << "releasing " << _vec << std::endl;
     delete[] _vec;
+	_vec = nullptr;
 }
 template <typename Field>
 Col_vector<Field>& Col_vector<Field>::operator=(const Col_vector<Field> & b)
