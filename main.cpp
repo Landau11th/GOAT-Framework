@@ -27,7 +27,8 @@ int main(int argc, char** argv)
 	const unsigned int num_spinor = myargs("num_spinor");
 	const unsigned int dim_hamil = 1 << num_spinor;
 	const unsigned int dim_para_each_direction = myargs("dim_para_each_direction");
-	const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	const unsigned int dim_para = 3 * num_spinor * dim_para_each_direction;
 	const double rand = myargs("rand");
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
@@ -42,7 +43,7 @@ int main(int argc, char** argv)
 
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
-	Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para / (2 * num_spinor + 1));
+	Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
 	Deng::GOAT::RK4<elementtype, real> RK;
 
 	//RK.Prep_for_H_U(H);
@@ -197,7 +198,7 @@ int main(int argc, char** argv)
 
 		if (current_min > -((real)dim_hamil*3.0/4.0))
 		{
-			std::cout << "Local min is not close to idea gloabla min, start over with random initial position\n";
+			std::cout << "Local min is not close to idea global min, start over with random initial position\n";
 			start.randn();
 			start = sqrt(dim_para) * start;
 			is_global_min = false;
