@@ -147,11 +147,12 @@ Parameter Transverse_Ising<Field, Parameter>::control_field_component(const Para
 
 	return component;
 }
-//calculate the derivative to know H_alpha
+//calculate the derivative of the magnitude to know H_alpha
 template<typename Field, typename Parameter>
-Parameter Transverse_Ising<Field, Parameter>::control_field_component_derivative(const Parameter t, const unsigned int para_idx_begin, const unsigned int para_idx_derivative) const
+Parameter Transverse_Ising<Field, Parameter>::control_field_component_derivative(const Parameter t, const unsigned int para_idx_begin, const unsigned int relative_para_idx) const
 {
-	assert(para_idx_begin%_dim_para_each_direction == 0 && "error in control_field_component");
+	assert(para_idx_begin%_dim_para_each_direction == 0 && "error in control_field_component_derivative");
+	assert(relative_para_idx < _dim_para_each_direction && "error in control_field_component_derivative");
 
 	//REMARK: this virtual function is for sinusoidal control B field. 
 	//One should override it when treating Gaussian impulse or other type of control
@@ -160,10 +161,10 @@ Parameter Transverse_Ising<Field, Parameter>::control_field_component_derivative
 	const unsigned int if_has_const = _dim_para_each_direction % 2;
 	//mode and trig decide which wave mode to add
 	unsigned int mode, trig;
-	if((para_idx_derivative<(_dim_para_each_direction-1)) ||(_dim_para_each_direction % 2))
+	if((relative_para_idx<(_dim_para_each_direction-1)) || !if_has_const)
 	{
-		mode = para_idx_derivative / 2 + 1;
-		trig = para_idx_derivative % 2;
+		mode = relative_para_idx / 2 + 1;
+		trig = relative_para_idx % 2;
 		//take derivative w.r.t. this->parameters(para_idx_derivative + para_idx_begin)
 		component = trig == 0 ? sin(mode * _omega * t) : (cos(mode * _omega * t) - 1.0);
 	}
@@ -284,31 +285,31 @@ Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::lo
 //calculate derivative of local control field of ith spin
 //wrt para_idx_derivative th parameter
 template<typename Field, typename Parameter>
-Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int para_idx_derivative) const
+Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int relative_para_idx) const
 {
-	Deng::Col_vector<Parameter> ctrl(3);
-	ctrl[0] = 0.0;
-	ctrl[1] = 0.0;
-	ctrl[2] = 0.0;
+	Deng::Col_vector<Parameter> partial_ctrl(3);
+	partial_ctrl[0] = 0.0;
+	partial_ctrl[1] = 0.0;
+	partial_ctrl[2] = 0.0;
 
 	//static const unsigned int dim_para_each_site = 2 * this->_dim_para_each_direction;
 	if (ith_spin < this->_num_spin)
 	{
-		unsigned int which_axis = ((para_idx_derivative / this->_dim_para_each_direction) % 2);
-		ctrl[which_axis+1] = this->control_field_component_derivative(t, (2 * ith_spin + which_axis)*this->_dim_para_each_direction,
-			para_idx_derivative - this->_dim_para_each_direction);
+		unsigned int which_axis = relative_para_idx / this->_dim_para_each_direction;
+		partial_ctrl[which_axis+1] = this->control_field_component_derivative(t, (2 * ith_spin + which_axis)*this->_dim_para_each_direction,
+			relative_para_idx - which_axis*this->_dim_para_each_direction);
 	}
 	else if (ith_spin == this->_num_spin)
 	{
-		ctrl[0] = this->control_field_component_derivative(t, 2 * this->_num_spin *this->_dim_para_each_direction, 
-			para_idx_derivative - this->_dim_para_each_direction);
+		partial_ctrl[0] = this->control_field_component_derivative(t, 2 * this->_num_spin *this->_dim_para_each_direction,
+			relative_para_idx);
 	}
 	else
 	{
 		assert(false && "Wrong dimension in local_control_field");
 	}
 
-	return ctrl;
+	return partial_ctrl;
 }
 
 template<typename Field, typename Parameter>
@@ -336,8 +337,10 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 	{
 		unsigned int spin_index = (i - 1) / (2 * this->_dim_para_each_direction);
 		
-		//could be generalize?
-		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, spin_index, i - 1);
+		//general partial control partial alpha
+		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, spin_index, i - 1 - spin_index*2 * this->_dim_para_each_direction);
+		//finite difference to approximate partial alpha
+		//yield the exact derivative when field is linear on parameters
 		//this->parameters(i - 1) += 0.0078125;
 		//Deng::Col_vector<Parameter> partial_control = local_control_field(t, spin_index);
 		//this->parameters(i - 1) -= 0.0078125;
@@ -347,15 +350,17 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 	}
 	for (unsigned int i = (2 * this->_num_spin * this->_dim_para_each_direction)+1; i <= this->_dim_para; ++i)
 	{
-		//could be generalize?
-		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, this->_num_spin, i - 1);
+		//general partial control partial alpha
+		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, this->_num_spin, i - 1 - 2 * this->_num_spin * this->_dim_para_each_direction);
+		//finite difference to approximate partial alpha
+		//yield the exact derivative when field is linear on parameters
 		//this->parameters(i - 1) += 0.0078125;
 		//Parameter partial_control = this->control_field_component(t, this->_dim_para - this->_dim_para_each_direction);
 		//this->parameters(i - 1) -= 0.0078125;
 		//partial_control = 128.0*(partial_control - this->control_field_component(t, this->_dim_para - this->_dim_para_each_direction));
 
-		//iH_and_partial_H[i] = (-imag_i)*(partial_control*this->S_total[0]);
 		iH_and_partial_H[i] = this->minus_i_over_hbar*(partial_control^this->S_total);
+		//iH_and_partial_H[i] = this->minus_i_over_hbar*(partial_control*this->S_total[0]);
 	}
 
 	return iH_and_partial_H;

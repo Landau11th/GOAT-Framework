@@ -164,8 +164,8 @@ namespace Deng
 			//release the pointer
 			virtual ~GOAT_Target_1st_order()
 			{
-				delete RK_pt;
-				delete H_and_partial_H_pt;
+				RK_pt = nullptr;
+				H_and_partial_H_pt = nullptr;
 			};
 		};
 
