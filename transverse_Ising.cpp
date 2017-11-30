@@ -311,7 +311,7 @@ Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::lo
 
 	return partial_ctrl;
 }
-
+//local control field
 template<typename Field, typename Parameter>
 arma::Mat<Field> Transverse_Ising_Local_Control<Field, Parameter>::H_control(const Parameter t) const
 {

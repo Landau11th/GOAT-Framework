@@ -109,9 +109,9 @@ public:
 		const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);
 
 	//calculate local control field
-	Deng::Col_vector<Parameter> local_control_field(Parameter t, unsigned int ith_spin) const;
+	virtual Deng::Col_vector<Parameter> local_control_field(Parameter t, unsigned int ith_spin) const;
 	//calculate derivative of local control field
-	Deng::Col_vector<Parameter> local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int para_idx_derivative) const;
+	virtual Deng::Col_vector<Parameter> local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int para_idx_derivative) const;
 	//override the control Hamiltonian
 	virtual arma::Mat<Field> H_control(Parameter t) const override;
 
@@ -122,6 +122,9 @@ public:
 	//virtual destructor
 	virtual ~Transverse_Ising_Local_Control() { delete[] S_each; };
 };
+
+
+
 
 
 

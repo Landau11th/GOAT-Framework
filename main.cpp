@@ -6,11 +6,11 @@
 #include <ctime>
 
 #include <armadillo>
+#include "Deng_vector.hpp"
 #include "Optimization.hpp"
 #include "GOAT_RK4.hpp"
-#include "Deng_vector.hpp"
-
 #include "transverse_Ising.hpp"
+
 #include "miscellaneous.hpp"
 
 void Verify_level_crossing();
@@ -21,22 +21,24 @@ typedef std::complex<real> elementtype;
 int main(int argc, char** argv)
 {
 	//Verify_level_crossing();
-	const unsigned int num_spinor = std::stoi(argv[1]);
+	//read in arguments from file
+	Deng::Misc::ReadArguments::FromFile myargs(argv[1]);
+	//assign the values
+	const unsigned int num_spinor = myargs("num_spinor");
 	const unsigned int dim_hamil = 1 << num_spinor;
-	const unsigned int dim_para_each_direction = std::stoi(argv[2]);
-	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
-	const unsigned int dim_para = (2 * num_spinor +1)*dim_para_each_direction;
-	const real rand = std::stof(argv[3]);
+	const unsigned int dim_para_each_direction = myargs("dim_para_each_direction");
+	const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	const double rand = myargs("rand");
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
-	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
+	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
 	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 
-	const unsigned int N_t = 2048;
-	const real tau = 3.0;
-	const real epsilon = 1.0/1024;
-	const real epsilon_gradient = sqrt(dim_hamil)*epsilon;
-	const unsigned int conj_grad_max_iter = 100;
+	const unsigned int N_t = myargs("N_t");
+	const double tau = myargs("tau");
+	const double epsilon = myargs("epsilon");
+	const double epsilon_gradient = sqrt(dim_hamil)*epsilon;
+	const unsigned int conj_grad_max_iter = myargs("conj_grad_max_iter");
 
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
@@ -117,6 +119,7 @@ int main(int argc, char** argv)
 	outputfile.precision(10);
 	outputfile.setf(std::ios::fixed);
 	//indicate system specs at the beginning
+	myargs(outputfile);
 	outputfile << "Number of spin: " << num_spinor << std::endl;
 	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
 	outputfile << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
@@ -186,8 +189,8 @@ int main(int argc, char** argv)
 			{
 				std::cout << "\nReach (local) minimum" << std::endl;
 				outputfile << "Reach(local) minimum of " << current_min << "\n";
-				outputfile << current_min_coordinate.t() << "\n";
-				//current_min_coordinate.t().raw_print();
+				//outputfile << current_min_coordinate.t() << "\n";
+				current_min_coordinate.t().raw_print(outputfile);
 			}
 
 		} while (is_stationary);
