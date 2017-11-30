@@ -109,9 +109,12 @@ public:
 		const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);
 
 	//calculate local control field
-	virtual Deng::Col_vector<Parameter> local_control_field(Parameter t, unsigned int ith_spin) const;
+	//virtual 
+	Deng::Col_vector<Parameter> local_control_field(Parameter t, unsigned int ith_spin) const;
 	//calculate derivative of local control field
-	virtual Deng::Col_vector<Parameter> local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int para_idx_derivative) const;
+	//index is relative within ith_spin
+	//virtual 
+	Deng::Col_vector<Parameter> local_control_field_derivative(Parameter t, unsigned int ith_spin, const unsigned int relative_para_idx) const;
 	//override the control Hamiltonian
 	virtual arma::Mat<Field> H_control(Parameter t) const override;
 
@@ -121,6 +124,28 @@ public:
 
 	//virtual destructor
 	virtual ~Transverse_Ising_Local_Control() { delete[] S_each; };
+};
+
+
+
+//transeverse Ising model, with local control fields
+//i.e. apply different field to each spin
+//impulse control
+template<typename Field, typename Parameter>
+class Transverse_Ising_Impulse_Local : public Transverse_Ising_Local_Control<Field, Parameter>
+{
+protected:
+	const unsigned int	_num_impulse;
+public:
+	Transverse_Ising_Impulse_Local(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+		const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);
+
+	virtual Parameter control_field_component(const Parameter t, const unsigned int para_idx_begin) const override;
+	virtual Parameter control_field_component_derivative(const Parameter t, 
+		const unsigned int para_idx_begin, const unsigned int para_idx_derivative) const override;
+
+	//virtual destructor
+	virtual ~Transverse_Ising_Impulse_Local() = default;
 };
 
 

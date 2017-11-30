@@ -43,7 +43,9 @@ int main(int argc, char** argv)
 
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
-	Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	//Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+
 	Deng::GOAT::RK4<elementtype, real> RK;
 
 	//RK.Prep_for_H_U(H);

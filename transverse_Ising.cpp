@@ -346,3 +346,64 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 
 	return iH_and_partial_H;
 }
+
+
+
+
+template class Transverse_Ising_Impulse_Local<std::complex<float>, float>;
+template class Transverse_Ising_Impulse_Local<std::complex<double>, double>;
+
+//constructor
+//need to initialize more intermediate results
+template<typename Field, typename Parameter>
+Transverse_Ising_Impulse_Local<Field, Parameter>::Transverse_Ising_Impulse_Local(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar)
+	: Transverse_Ising_Local_Control<Field, Parameter>(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar), _num_impulse(dim_para_each_direction/3)
+{
+	assert((dim_para_each_direction % 3 == 0) && "dim_para_each_direction is not multiple of 3");
+}
+template<typename Field, typename Parameter>
+Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_component(const Parameter t, const unsigned int para_idx_begin) const
+{
+	//REMARK: this virtual function is for Gaussian impulse.
+	Parameter component = 0.0;
+	
+	Parameter t_prime = 0.0;
+	for (unsigned int i = 0; i < _num_impulse; i += 3)
+	{
+		t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
+		t_prime *= t_prime;
+		component += this->parameters[para_idx_begin + i] * std::exp2(-t_prime);
+	}
+
+	return component;
+}
+template<typename Field, typename Parameter>
+Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_component_derivative(const Parameter t,
+	const unsigned int para_idx_begin, const unsigned int para_idx_derivative) const
+{
+	//REMARK: this virtual function is for Gaussian impulse.
+	Parameter component = 0.0;
+
+	const unsigned int i = (para_idx_derivative / 3) * 3;
+	Parameter t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
+	Parameter t_prime_sq = t_prime*t_prime;
+
+	const unsigned int flag = para_idx_derivative % 3;
+
+	if (flag == 0)
+	{
+		component = std::exp2(-t_prime_sq);
+	}
+	else if (flag == 1)
+	{
+		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime / this->parameters[para_idx_begin + i + 2];
+	}
+	else
+	{
+		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime_sq / this->parameters[para_idx_begin + i + 2];
+	}
+
+
+	return component;
+}
