@@ -145,7 +145,7 @@ Parameter Transverse_Ising<Field, Parameter>::control_field_component(const Para
 		component += trig == 0 ? this->parameters(i + para_idx_begin) * sin(mode * _omega * t) : this->parameters(i + para_idx_begin) * (cos(mode * _omega * t) - 1.0);
 	}
 	if (if_has_const)
-		component += parameters(_dim_para_each_direction + para_idx_begin - if_has_const);
+		component += this->parameters(_dim_para_each_direction + para_idx_begin - if_has_const);
 
 	return component;
 }

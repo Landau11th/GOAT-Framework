@@ -21,9 +21,12 @@ namespace Deng
 		//might be extended
 		namespace FiniteGroup
 		{
-			template <class int_type, int_type order>
+			template <typename int_type, int_type order>
 			class Abelian_Additive_Group_of_Z;
 
+
+
+			//overloaded operator of additive group
 			template<typename int_type, int_type order>
 			Abelian_Additive_Group_of_Z<int_type, order> operator+(
 				const Abelian_Additive_Group_of_Z<int_type, order>& left,
@@ -47,7 +50,10 @@ namespace Deng
 				return left + (-temp);
 			};
 
-			template <class int_type, int_type order>
+
+
+			//additive group of modulo n
+			template <typename int_type, int_type order>
 			class Abelian_Additive_Group_of_Z
 			{
 			protected:
@@ -71,6 +77,7 @@ namespace Deng
 				}
 				explicit operator int_type() const { return this->value; }
 
+				////overloaded operator as memebr function
 				//Abelian_Additive_Group_of_Z<int_type, order> operator+(
 				//	const Abelian_Additive_Group_of_Z<int_type, order>& right
 				//	)
@@ -92,13 +99,14 @@ namespace Deng
 
 				virtual ~Abelian_Additive_Group_of_Z() = default;
 
-				template<typename int_type, int_type order>
-				friend Abelian_Additive_Group_of_Z<int_type, order> operator+(const Abelian_Additive_Group_of_Z<int_type, order>& left,
-					const Abelian_Additive_Group_of_Z<int_type, order>& right);
+				//overloaded operator as friend
+				template<typename int_type2, int_type2 order2>
+				friend Abelian_Additive_Group_of_Z<int_type2, order2> operator+(const Abelian_Additive_Group_of_Z<int_type2, order2>& left,
+					const Abelian_Additive_Group_of_Z<int_type2, order2>& right);
 
-				template<typename int_type, int_type order>
-				friend Abelian_Additive_Group_of_Z<int_type, order> operator-(const Abelian_Additive_Group_of_Z<int_type, order>& left,
-					const Abelian_Additive_Group_of_Z<int_type, order>& right);
+				template<typename int_type2, int_type2 order2>
+				friend Abelian_Additive_Group_of_Z<int_type2, order2> operator-(const Abelian_Additive_Group_of_Z<int_type2, order2>& left,
+					const Abelian_Additive_Group_of_Z<int_type2, order2>& right);
 			protected:
 				void Check_Consistency()
 				{
