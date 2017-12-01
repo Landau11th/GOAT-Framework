@@ -6,41 +6,57 @@
 #include <ctime>
 
 #include <armadillo>
+#include "Deng_vector.hpp"
 #include "Optimization.hpp"
 #include "GOAT_RK4.hpp"
-#include "Deng_vector.hpp"
-
 #include "transverse_Ising.hpp"
+
 #include "miscellaneous.hpp"
 
-void Verify_level_crossing();
+
+//used to print out energy levels without control field
+//outputfile names ""eigenvalues.dat"
+//should use python to do further plot
+void Verify_level_crossing(const std::string);
 
 typedef double real;
 typedef std::complex<real> elementtype;
 
 int main(int argc, char** argv)
 {
-	//Verify_level_crossing();
-	const unsigned int num_spinor = std::stoi(argv[1]);
+	if (argc > 2)
+	{
+		Verify_level_crossing(argv[1]);
+
+		return 0;
+	}
+
+
+	//read in arguments from file
+	Deng::Misc::ReadArguments::FromFile myargs(argv[1]);
+	//assign the values
+	const unsigned int num_spinor = myargs("num_spinor");
 	const unsigned int dim_hamil = 1 << num_spinor;
-	const unsigned int dim_para_each_direction = std::stoi(argv[2]);
+	const unsigned int dim_para_each_direction = myargs("dim_para_each_direction");
 	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
-	const unsigned int dim_para = (2 * num_spinor +1)*dim_para_each_direction;
-	const real rand = std::stof(argv[3]);
+	const unsigned int dim_para = 3 * num_spinor * dim_para_each_direction;
+	const double rand = myargs("rand");
 
 	std::cout << "Number of spin: " << num_spinor << std::endl;
-	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction <<" paras for each direction" << std::endl;
+	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
 	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
 
-	const unsigned int N_t = 2048;
-	const real tau = 3.0;
-	const real epsilon = 1.0/1024;
-	const real epsilon_gradient = sqrt(dim_hamil)*epsilon;
-	const unsigned int conj_grad_max_iter = 100;
+	const unsigned int N_t = myargs("N_t");
+	const double tau = myargs("tau");
+	const double epsilon = myargs("epsilon");
+	const double epsilon_gradient = sqrt(dim_hamil)*epsilon;
+	const unsigned int conj_grad_max_iter = myargs("conj_grad_max_iter");
 
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
-	Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para / (2 * num_spinor + 1));
+	//Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+
 	Deng::GOAT::RK4<elementtype, real> RK;
 
 	//RK.Prep_for_H_U(H);
@@ -117,10 +133,11 @@ int main(int argc, char** argv)
 	outputfile.precision(10);
 	outputfile.setf(std::ios::fixed);
 	//indicate system specs at the beginning
+	myargs(outputfile);
 	outputfile << "Number of spin: " << num_spinor << std::endl;
 	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
-	outputfile << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
-
+	outputfile << "Take initial position with " << rand << " randomness" << std::endl << std::endl;
+	outputfile << "Programme starts at" << Deng::Misc::TimeStamp() << std::endl << std::endl << std::endl;
 
 	arma::Col<real> current_min_coordinate(dim_para);
 	real current_min;
@@ -186,15 +203,15 @@ int main(int argc, char** argv)
 			{
 				std::cout << "\nReach (local) minimum" << std::endl;
 				outputfile << "Reach(local) minimum of " << current_min << "\n";
-				outputfile << current_min_coordinate.t() << "\n";
-				//current_min_coordinate.t().raw_print();
+				//outputfile << current_min_coordinate.t() << "\n";
+				current_min_coordinate.t().raw_print(outputfile);
 			}
 
 		} while (is_stationary);
 
 		if (current_min > -((real)dim_hamil*3.0/4.0))
 		{
-			std::cout << "Local min is not close to idea gloabla min, start over with random initial position\n";
+			std::cout << "Local min is not close to idea global min, start over with random initial position\n";
 			start.randn();
 			start = sqrt(dim_para) * start;
 			is_global_min = false;
@@ -215,6 +232,8 @@ int main(int argc, char** argv)
 
 	} while (!is_global_min);
 
+
+	outputfile << "Programme ends at" << Deng::Misc::TimeStamp() << std::endl;
     outputfile.close();
 	//Deng::Optimization::Newton_Find_Min<real> NT_search_hess(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	//NT_search_hess.Assign_Target_Function(&target_finite_diff);
@@ -254,59 +273,50 @@ int main(int argc, char** argv)
 
 
 
-
-
-void Verify_level_crossing()
+//used to print out energy levels without control field
+//outputfile names ""eigenvalues.dat"
+//should use python to do further plot
+void Verify_level_crossing(const std::string inputfile)
 {
-	//    const int N_t = 2000;
-	//    const double tau = 3.0;
-	//    const int dim_para = std::stoi(argv[1]);
-	//    const double hbar = 1.0;
-	//
-	//    const double epsilon = 0.01;
-	//    const int max_iteration = 20;
-	//
-	//    Single_spin_half H_only(N_t, tau, 0);
-	//    Single_spin_half H_and_partial_H(N_t, tau, dim_para);
-	//    Deng::GOAT::RK4<std::complex<double> > RungeKutta;
-	//
-	//    //GOAT_Target target(&RungeKutta, &H_only, &H_and_partial_H);
-	//	GOAT_Target target(&RungeKutta, &H_and_partial_H);
-
-	Deng::Col_vector<arma::Mat<elementtype>> S(3);
-	S[0].zeros(2, 2);
-	S[0](0, 1) = 1;
-	S[0](1, 0) = 1;
-	S[1].zeros(2, 2);
-	S[1](0, 1) = -imag_i;
-	S[1](1, 0) = imag_i;
-	S[2].zeros(2, 2);
-	S[2](0, 0) = 1;
-	S[2](1, 1) = -1;
-	arma::Mat<elementtype> S_identity;
-	S_identity.zeros(2, 2);
-	S_identity(0, 0) = 1;
-	S_identity(1, 1) = 1;
-	//S = 0.5*hbar*S;
-
-	const unsigned int N_t = 1000;
-	const double tau = 3.0;
-
-	const unsigned int num_spinor = 6;
+	
+	//read in arguments from file
+	Deng::Misc::ReadArguments::FromFile myargs(inputfile);
+	//assign the values
+	const unsigned int num_spinor = myargs("num_spinor");
 	const unsigned int dim_hamil = 1 << num_spinor;
+	const unsigned int dim_para_each_direction = myargs("dim_para_each_direction");
+	//const unsigned int dim_para = (2 * num_spinor + 1)*dim_para_each_direction;
+	const unsigned int dim_para = 3 * num_spinor * dim_para_each_direction;
+	const double rand = myargs("rand");
 
+	std::cout << "Number of spin: " << num_spinor << std::endl;
+	std::cout << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
+	std::cout << "start with " << rand << " randomness" << std::endl << std::endl << std::endl;
+
+	const unsigned int N_t = myargs("N_t");
+	const double tau = myargs("tau");
+	const double epsilon = myargs("epsilon");
+	const double epsilon_gradient = sqrt(dim_hamil)*epsilon;
+	const unsigned int conj_grad_max_iter = myargs("conj_grad_max_iter");
+	
+	
+	
 	//output to
 	std::ofstream outputfile;
-	outputfile.open("eigenvalues.dat");
+	std::string filename;
+	//set file name
+	filename = "eigenvalues";
+	filename = filename + ".dat";
+	//filename = filename + Deng::Misc::TimeStamp() + ".dat";
+	//set output & format
+	outputfile.open(filename);
+	outputfile.precision(7);
+	outputfile.setf(std::ios::fixed);
 
-	Deng::Col_vector<real> B(3);
-	B[0] = 1.5;
-	B[1] = 0.2;
-	B[2] = 1.0;
 
-	Deng::Col_vector<real> B_now = B;
-
-	Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, 9, 2);
+	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
+	//Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
 
 	for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
 	{
@@ -323,67 +333,8 @@ void Verify_level_crossing()
 			std::cout << t_i << "th step eigen vectors has nan or inf!" << std::endl;
 			std::cout << eigen_vector.col(58).has_nan() << eigen_vector.col(59).has_nan() << eigen_vector.col(60).has_nan() << std::endl;
 		}
-
-		//if (t_i < 100)
-		//{
-		//	std::cout << "with prev: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
-		//	std::cout << "with next: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(60)) << "  ";
-		//	std::cout << "with self: " << arma::as_scalar(eigen_vector.col(59).t()*eigen_vector.col(58)) << "  ";
-		//	std::cout << std::endl;
-		//}
-
-		outputfile << eigen_energy.t();
+		eigen_energy.t().raw_print(outputfile);
 	}
-
-	//for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
-	//{
-	//	arma::Mat<elementtype> interaction(dim_hamil, dim_hamil, arma::fill::zeros);
-	//	auto external_field = interaction;
-
-	//	//B_now = ((2 * (double)t_i) / N_t - 1.0)*B;
-	//	B_now[0] = B[0] * cos(0.5*Pi*(double)t_i / N_t);
-	//	B_now[1] = 0.0;
-	//	B_now[2] = B[2] * sin(0.5*Pi*(double)t_i / N_t);
-
-
-	//	for (unsigned int i = 0; i < (num_spinor - 1); ++i)
-	//	{
-	//		auto temp = i == 0 ? S[2] : S_identity;
-	//		for (unsigned int j = 1; j < num_spinor; ++j)
-	//		{
-	//			temp = arma::kron(temp, (j == i) || (j == i + 1) ? S[2] : S_identity);
-	//		}
-	//		interaction += temp;
-	//	}
-
-	//	//auto temp = S[2];
-	//	//for (unsigned int j = 1; j < num_spinor; ++j)
-	//	//{
-	//	//	temp = arma::kron(temp, j == (num_spinor - 1) ? S[2] : S_identity);
-	//	//}
-	//	//interaction += temp;
-
-	//	for (unsigned int i = 0; i < num_spinor; ++i)
-	//	{
-	//		auto temp_B = i == 0 ? B_now^S : S_identity;
-	//		for (unsigned int j = 1; j < num_spinor; ++j)
-	//		{
-	//			temp_B = arma::kron(temp_B, i == j ? B_now^S : S_identity);
-	//		}
-	//		external_field += temp_B;
-	//	}
-
-	//	arma::Col<real> eigen_energy(dim_hamil);
-	//	auto eigen_vector = interaction;
-	//	arma::eig_sym(eigen_energy, eigen_vector, interaction + external_field);
-
-	//	//std::cout  << eigen_energy.t() << std::endl;
-	//	outputfile << eigen_energy.t();// << std::endl;
-
-	//}
-
-	//std::cout << interaction << std::endl;
-	//std::cout << arma::kron(S[0], S[1]) << std::endl;
 
 	outputfile.close();
 }

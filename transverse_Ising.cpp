@@ -78,14 +78,20 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) c
 	//B_field[1] = 0.0;
 	//B_field[2] = this->_B_z_max *t / this->_tau *t / this->_tau;
 
-	//B_field[0] = this->_B_x_max ;
+	////jump
+	//B_field[0] = this->_B_x_max;
 	//B_field[1] = 0.0;
-	//B_field[2] = this->_B_z_max *t / this->_tau;
+	//B_field[2] = t>(this->_tau - this->_dt/8.0) ? 0.0 : this->_B_z_max;
 
-	//benchmark constant B field
-	B_field[0] = this->_B_x_max;
+	//linear B field
+	B_field[0] = this->_B_x_max ;
 	B_field[1] = 0.0;
-	B_field[2] = this->_B_z_max;
+	B_field[2] = this->_B_z_max *t / this->_tau;
+
+	////benchmark constant B field
+	//B_field[0] = this->_B_x_max;
+	//B_field[1] = 0.0;
+	//B_field[2] = this->_B_z_max;
 
 	////benchmark quadratic
 	//B_field[0] = this->_B_x_max;
@@ -97,10 +103,6 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) c
 	//B_field[1] = 0.0;
 	//B_field[2] = this->_B_z_max*sin(_omega *t);
 
-	////benchmark jump
-	//B_field[0] = this->_B_x_max;
-	//B_field[1] = 0.0;
-	//B_field[2] = t>(this->_tau - this->_dt/4.0) ? 0.0 : this->_B_z_max;
 
 	return B_field;
 }
@@ -227,8 +229,12 @@ Transverse_Ising_Local_Control<Field, Parameter>::Transverse_Ising_Local_Control
 	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar)
 	: Transverse_Ising<Field, Parameter>(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar)
 {
-	if (dim_para != (2 * num_spin + 1)*dim_para_each_direction)
+	if (dim_para != 3 * num_spin*dim_para_each_direction)
+	{
 		std::cout << "Dimension of parametric space does not fit for local control with the most freedoms!" << std::endl;
+		assert(dim_para == (3 * num_spin *dim_para_each_direction) && "switched to full control!");
+	}
+		
 	//S of each spin
 	S_each = new Deng::Col_vector<arma::Mat<Field>>[num_spin];
 
@@ -265,15 +271,9 @@ Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::lo
 	//static const unsigned int dim_para_each_site = 2 * this->_dim_para_each_direction;
 	if (ith_spin < this->_num_spin)
 	{
-		ctrl[0] = 0.0;
-		ctrl[1] = this->control_field_component(t, (2 * ith_spin + 0)*this->_dim_para_each_direction);
-		ctrl[2] = this->control_field_component(t, (2 * ith_spin + 1)*this->_dim_para_each_direction);
-	}
-	else if(ith_spin == this->_num_spin)
-	{
-		ctrl[0] = this->control_field_component(t, 2 * this->_num_spin *this->_dim_para_each_direction);
-		ctrl[1] = 0.0;
-		ctrl[2] = 0.0;
+		ctrl[0] = this->control_field_component(t, (3 * ith_spin + 0)*this->_dim_para_each_direction);
+		ctrl[1] = this->control_field_component(t, (3 * ith_spin + 1)*this->_dim_para_each_direction);
+		ctrl[2] = this->control_field_component(t, (3 * ith_spin + 2)*this->_dim_para_each_direction);
 	}
 	else
 	{
@@ -296,13 +296,8 @@ Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::lo
 	if (ith_spin < this->_num_spin)
 	{
 		unsigned int which_axis = relative_para_idx / this->_dim_para_each_direction;
-		partial_ctrl[which_axis+1] = this->control_field_component_derivative(t, (2 * ith_spin + which_axis)*this->_dim_para_each_direction,
+		partial_ctrl[which_axis] = this->control_field_component_derivative(t, (3 * ith_spin + which_axis)*this->_dim_para_each_direction,
 			relative_para_idx - which_axis*this->_dim_para_each_direction);
-	}
-	else if (ith_spin == this->_num_spin)
-	{
-		partial_ctrl[0] = this->control_field_component_derivative(t, 2 * this->_num_spin *this->_dim_para_each_direction,
-			relative_para_idx);
 	}
 	else
 	{
@@ -311,7 +306,7 @@ Deng::Col_vector<Parameter> Transverse_Ising_Local_Control<Field, Parameter>::lo
 
 	return partial_ctrl;
 }
-
+//local control field
 template<typename Field, typename Parameter>
 arma::Mat<Field> Transverse_Ising_Local_Control<Field, Parameter>::H_control(const Parameter t) const
 {
@@ -321,8 +316,7 @@ arma::Mat<Field> Transverse_Ising_Local_Control<Field, Parameter>::H_control(con
 	{
 		h_c += local_control_field(t, i) ^ S_each[i];
 	}
-	h_c += local_control_field(t, this->_num_spin) ^ this->S_total;
-
+	//h_c += local_control_field(t, this->_num_spin) ^ this->S_total;
 	return h_c;
 }
 
@@ -333,12 +327,13 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 
 	iH_and_partial_H[0] = this->Dynamics_U(t);
 
-	for (unsigned int i = 1; i <= (2*this->_num_spin*this->_dim_para_each_direction); ++i)
+	for (unsigned int i = 1; i <= 3*this->_num_spin*this->_dim_para_each_direction; ++i)
 	{
-		unsigned int spin_index = (i - 1) / (2 * this->_dim_para_each_direction);
+		unsigned int spin_index = (i - 1) / (3 * this->_dim_para_each_direction);
 		
 		//general partial control partial alpha
-		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, spin_index, i - 1 - spin_index*2 * this->_dim_para_each_direction);
+		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative
+			(t, spin_index, i - 1 - 3* spin_index * this->_dim_para_each_direction);
 		//finite difference to approximate partial alpha
 		//yield the exact derivative when field is linear on parameters
 		//this->parameters(i - 1) += 0.0078125;
@@ -347,21 +342,70 @@ Deng::Col_vector<arma::Mat<Field>> Transverse_Ising_Local_Control<Field, Paramet
 		//partial_control = 128.0*(partial_control - local_control_field(t, spin_index));
 
 		iH_and_partial_H[i] = this->minus_i_over_hbar*(partial_control^S_each[spin_index]);
+		//std::cout << iH_and_partial_H[i].size() << "\n";
 	}
-	for (unsigned int i = (2 * this->_num_spin * this->_dim_para_each_direction)+1; i <= this->_dim_para; ++i)
-	{
-		//general partial control partial alpha
-		Deng::Col_vector<Parameter> partial_control = local_control_field_derivative(t, this->_num_spin, i - 1 - 2 * this->_num_spin * this->_dim_para_each_direction);
-		//finite difference to approximate partial alpha
-		//yield the exact derivative when field is linear on parameters
-		//this->parameters(i - 1) += 0.0078125;
-		//Parameter partial_control = this->control_field_component(t, this->_dim_para - this->_dim_para_each_direction);
-		//this->parameters(i - 1) -= 0.0078125;
-		//partial_control = 128.0*(partial_control - this->control_field_component(t, this->_dim_para - this->_dim_para_each_direction));
 
-		iH_and_partial_H[i] = this->minus_i_over_hbar*(partial_control^this->S_total);
-		//iH_and_partial_H[i] = this->minus_i_over_hbar*(partial_control*this->S_total[0]);
-	}
 
 	return iH_and_partial_H;
+}
+
+
+
+
+template class Transverse_Ising_Impulse_Local<std::complex<float>, float>;
+template class Transverse_Ising_Impulse_Local<std::complex<double>, double>;
+
+//constructor
+//need to initialize more intermediate results
+template<typename Field, typename Parameter>
+Transverse_Ising_Impulse_Local<Field, Parameter>::Transverse_Ising_Impulse_Local(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar)
+	: Transverse_Ising_Local_Control<Field, Parameter>(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar), _num_impulse(dim_para_each_direction/3)
+{
+	assert((dim_para_each_direction % 3 == 0) && "dim_para_each_direction is not multiple of 3");
+}
+template<typename Field, typename Parameter>
+Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_component(const Parameter t, const unsigned int para_idx_begin) const
+{
+	//REMARK: this virtual function is for Gaussian impulse.
+	Parameter component = 0.0;
+	
+	Parameter t_prime = 0.0;
+	for (unsigned int i = 0; i < _num_impulse; i += 3)
+	{
+		t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
+		t_prime *= t_prime;
+		component += this->parameters[para_idx_begin + i] * std::exp2(-t_prime);
+	}
+
+	return component;
+}
+template<typename Field, typename Parameter>
+Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_component_derivative(const Parameter t,
+	const unsigned int para_idx_begin, const unsigned int para_idx_derivative) const
+{
+	//REMARK: this virtual function is for Gaussian impulse.
+	Parameter component = 0.0;
+
+	const unsigned int i = (para_idx_derivative / 3) * 3;
+	Parameter t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
+	Parameter t_prime_sq = t_prime*t_prime;
+
+	const unsigned int flag = para_idx_derivative % 3;
+
+	if (flag == 0)
+	{
+		component = std::exp2(-t_prime_sq);
+	}
+	else if (flag == 1)
+	{
+		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime / this->parameters[para_idx_begin + i + 2];
+	}
+	else
+	{
+		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime_sq / this->parameters[para_idx_begin + i + 2];
+	}
+
+
+	return component;
 }
