@@ -31,9 +31,14 @@ class Transverse_Ising : public Deng::GOAT::Hamiltonian<Field, Parameter>
 	//friend class Deng::GOAT::RK4<Field, Parameter>;
 protected:
 	//pressumed constants of the model
+	//strong field
 	Parameter _B_x_max = 0.65;
 	Parameter _B_y_max = 0.0;
 	Parameter _B_z_max = 1.1;
+	////weak field
+	//Parameter _B_x_max = 0.0125;
+	//Parameter _B_y_max = 0.0;
+	//Parameter _B_z_max = 0.03;
     Parameter _J = 1.0;
 	Parameter _omega;
     Parameter _hbar;

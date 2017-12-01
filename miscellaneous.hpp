@@ -16,8 +16,6 @@ namespace Deng
 	namespace Misc
 	{
 		std::string TimeStamp();
-		
-
 
 		//initially for integers mod N
 		//might be extended
