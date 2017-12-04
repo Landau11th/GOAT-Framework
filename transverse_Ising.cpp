@@ -74,19 +74,20 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) c
 	//B_field[1] = _B_y_max;
 	//B_field[2] = sin(0.25*_omega*t)*_B_z_max;
 
-	//B_field[0] = this->_B_x_max *(1 + t / this->_tau);
-	//B_field[1] = 0.0;
-	//B_field[2] = this->_B_z_max *t / this->_tau *t / this->_tau;
+	//quadra
+	B_field[0] = this->_B_x_max *(1 + t / this->_tau);
+	B_field[1] = 0.0;
+	B_field[2] = this->_B_z_max *t / this->_tau *t / this->_tau;
 
 	////jump
 	//B_field[0] = this->_B_x_max;
 	//B_field[1] = 0.0;
 	//B_field[2] = t>(this->_tau - this->_dt/8.0) ? 0.0 : this->_B_z_max;
 
-	//linear B field
-	B_field[0] = this->_B_x_max ;
-	B_field[1] = 0.0;
-	B_field[2] = this->_B_z_max *t / this->_tau;
+	////linear B field
+	//B_field[0] = this->_B_x_max ;
+	//B_field[1] = 0.0;
+	//B_field[2] = this->_B_z_max *t / this->_tau;
 
 	////benchmark constant B field
 	//B_field[0] = this->_B_x_max;

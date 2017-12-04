@@ -8,7 +8,7 @@ std::string Deng::Misc::TimeStamp()
 	struct tm * now = &time_info;
 	localtime_s(now, &t);
 	//if localtime_s is not defined, comment previous three lines and uncomment the following line
-	//struct tm * now = localtime_s(&t);
+	//struct tm * now = localtime(&t);
 	char buffer[80];
 	strftime(buffer, 80, "%Y%m%d-%H%M%S", now);
 

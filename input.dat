@@ -1,5 +1,5 @@
-num_spinor = 3
-dim_para_each_direction = 2
+num_spinor = 2
+dim_para_each_direction = 3
 rand = 1
 
 N_t = 2048

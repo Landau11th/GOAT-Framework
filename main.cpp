@@ -55,7 +55,8 @@ int main(int argc, char** argv)
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
 	//Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
-	Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	//Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	LMG<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
 
 	Deng::GOAT::RK4<elementtype, real> RK;
 
@@ -107,6 +108,8 @@ int main(int argc, char** argv)
 	//Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
 	//Deng::Optimization::Newton_Find_Root<real> NT_search(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	Deng::Optimization::Quasi_Newton<real> Quasi_NT(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
+	Quasi_NT.Set_Randomness(rand);
+
 	//appoint target function
 	//Conj_Grad.Assign_Target_Function(&target);
 	//NT_search.Assign_Target_Function(&target);
@@ -137,7 +140,7 @@ int main(int argc, char** argv)
 	outputfile << "Number of spin: " << num_spinor << std::endl;
 	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
 	outputfile << "Take initial position with " << rand << " randomness" << std::endl << std::endl;
-	outputfile << "Programme starts at" << Deng::Misc::TimeStamp() << std::endl << std::endl << std::endl;
+	outputfile << "Programme starts at " << Deng::Misc::TimeStamp() << std::endl << std::endl << std::endl;
 
 	arma::Col<real> current_min_coordinate(dim_para);
 	real current_min;
@@ -160,75 +163,99 @@ int main(int argc, char** argv)
 	bool is_global_min = true;
 	do {
 		is_global_min = true;
-
+		/*
 		do {
 			//reached a position
 			current_min_coordinate = Quasi_NT.BFGS(start);
 			current_min = target.function_value(current_min_coordinate);
 
-			//once reach the 0 negative gradient
-			//randomly pick several directions to check if it's only a stationary point
-			is_stationary = false;
-
-			//set up random direction
-			arma::Col<real> random_search_direction = current_min_coordinate;
-
-			//number of trials should increases with dimention of parametric space
-			for (unsigned int i = 0; i < dim_para; ++i)
+			if (current_min < -((real)dim_hamil - (1.0*epsilon)))
 			{
-				//randomly pick a direction
-				random_search_direction.randn();
-
-				//go through any 1D search
-				real lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
-				if (lambda < 0)
-				{
-					random_search_direction = -random_search_direction;
-					lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
-				}
-
-				//new function value, which should be <= the old one
-				real temp_func_value = target.function_value(current_min_coordinate + lambda*random_search_direction);
-
-				if (temp_func_value <= (current_min - epsilon / 256.0))
-				{
-					//this minimum is only a stationary point
-					is_stationary = true;
-					start = current_min_coordinate + lambda*random_search_direction;
-					std::cout << "\n\nNot a (local) minimum\n\n";
-					break;
-				}
+				std::cout << "Good enough!\n";
+				is_global_min = true;
+				is_stationary = false;
 			}
-			if (!is_stationary)
+			else
 			{
-				std::cout << "\nReach (local) minimum" << std::endl;
-				outputfile << "Reach(local) minimum of " << current_min << "\n";
-				//outputfile << current_min_coordinate.t() << "\n";
-				current_min_coordinate.t().raw_print(outputfile);
+				//once reach the 0 negative gradient
+				//randomly pick several directions to check if it's only a stationary point
+				is_stationary = false;
+
+				//set up random direction
+				arma::Col<real> random_search_direction = current_min_coordinate;
+
+				//number of trials should increases with dimention of parametric space
+				for (unsigned int i = 0; i < dim_para; ++i)
+				{
+					//randomly pick a direction
+					random_search_direction.randn();
+
+					//go through any 1D search
+					real lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+					if (lambda < 0)
+					{
+						random_search_direction = -random_search_direction;
+						lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+					}
+
+					//new function value, which should be <= the old one
+					real temp_func_value = target.function_value(current_min_coordinate + lambda*random_search_direction);
+
+					if (temp_func_value <= (current_min - epsilon / 256.0))
+					{
+						//this minimum is only a stationary point
+						is_stationary = true;
+						start = current_min_coordinate + lambda*random_search_direction;
+						std::cout << "\n\nNot a (local) minimum\n\n";
+						break;
+					}
+				}
+				if (!is_stationary)
+				{
+					std::cout << "\nReach (local) minimum" << std::endl;
+					outputfile << "Reach(local) minimum of " << current_min << "\n";
+					//outputfile << current_min_coordinate.t() << "\n";
+					current_min_coordinate.t().raw_print(outputfile);
+				}
 			}
 
 		} while (is_stationary);
+		*/
 
-		if (current_min > -((real)dim_hamil*3.0/4.0))
+		current_min_coordinate = Quasi_NT.BFGS(start);
+		current_min = target.function_value(current_min_coordinate);
+
+		std::cout << "\nReach stationary point " << std::endl;
+		outputfile << "Reach stationary point " << current_min << "\n";
+		//outputfile << current_min_coordinate.t() << "\n";
+		current_min_coordinate.t().raw_print(outputfile);
+		
+		auto temp = current_min;
+		do
 		{
-			std::cout << "Local min is not close to idea global min, start over with random initial position\n";
-			start.randn();
-			start = sqrt(dim_para) * start;
-			is_global_min = false;
-		}
-		//since we know the possible global minimum
-		else if (current_min > -((real)dim_hamil - (8.0*epsilon)))
-		{
-			std::cout << "Local min is close to idea global min, start over with a small shift\n";
-			start.randn();
-			start = current_min_coordinate + (1 / 16.0)*start;
-			is_global_min = false;
-		}
-		else
-		{
-			std::cout << "Good enough!\n";
-			is_global_min = true;
-		}
+			if (current_min > -((real)dim_hamil*3.0 / 4.0))
+			{
+				std::cout << "Local min is not close to idea global min, start over with random initial position\n";
+				start.randu();
+				start = sqrt(dim_para)*2.0*(start - 0.5)*rand;
+				is_global_min = false;
+			}
+			//since we know the possible global minimum
+			else if (current_min > -((real)dim_hamil - (1.0*epsilon)))
+			{
+				std::cout << "Local min is close to idea global min, start over with a small shift\n";
+				start.randu();
+				start = current_min_coordinate + (1 / 16.0)*start;
+				is_global_min = false;
+			}
+			else
+			{
+				std::cout << "Good enough!\n";
+				is_global_min = true;
+			}
+
+			temp = target.function_value(start);
+		} while ((temp > -1.0) || (temp > -((double)dim_hamil) / 8.0) || temp!=temp);
 
 	} while (!is_global_min);
 
@@ -316,7 +343,8 @@ void Verify_level_crossing(const std::string inputfile)
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
 	//Transverse_Ising_Local_Control<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
-	Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	//Transverse_Ising_Impulse_Local<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
+	LMG<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para_each_direction);
 
 	for (unsigned int t_i = 0; t_i <= N_t; ++t_i)
 	{

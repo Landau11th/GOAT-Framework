@@ -197,6 +197,7 @@ namespace Deng
 		class Quasi_Newton : public Min_Know_Gradient<real>
 		{
 		protected:
+			real _randomness;
 			mutable arma::Mat<real> H_k;
 			mutable arma::Mat<real> H_kp1;
 			mutable arma::Mat<real> x_k;
@@ -215,6 +216,8 @@ namespace Deng
 			{
 				identity.eye(this->_dim_para, this->_dim_para);
 			};
+
+			void Set_Randomness(real rand) { _randomness = rand; };
 
 			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const
 			{
@@ -244,22 +247,32 @@ namespace Deng
 					gradient_norm = sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1));
 					coordinate_norm = sqrt(arma::as_scalar(x_kp1.t()*x_kp1));
 
-					if (coordinate_norm > 1.0*this->_dim_para && gradient_norm > this->_epsilon_gradient)
+					if (coordinate_norm > 1.0*this->_dim_para*_randomness)
 					{
-						std::cout << "too far away from origin, start with random position near origin\n";
-						x_k.randu();
-						x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5);
-						neg_grad_k = this->f->negative_gradient(x_k, f_value);
+						do
+						{
+							std::cerr << "too far away from origin, start with random position near origin\n";
+							std::cout << "too far away from origin, start with random position near origin\n";
+							x_k.randu();
+							x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5)*_randomness;
+							neg_grad_k = this->f->negative_gradient(x_k, f_value);
+							gradient_norm = sqrt(arma::as_scalar(neg_grad_k.t()*neg_grad_k));
+						} while (f_value != f_value);
 						H_k = identity;
 						continue;
 					}
 					else if (f_value != f_value)
 					{
-						std::cerr << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
-						std::cout << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
-						x_k.randu();
-						x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5);
-						neg_grad_k = this->f->negative_gradient(x_k, f_value);
+						
+						do
+						{
+							std::cerr << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
+							std::cout << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
+							x_k.randu();
+							x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5)*_randomness;
+							neg_grad_k = this->f->negative_gradient(x_k, f_value);
+							gradient_norm = sqrt(arma::as_scalar(neg_grad_k.t()*neg_grad_k));
+						} while (f_value != f_value);
 						H_k = identity;
 						gradient_norm = 10.0*this->_epsilon_gradient;
 						continue;
@@ -272,7 +285,7 @@ namespace Deng
 					H_k = H_kp1;
 					neg_grad_k = neg_grad_kp1;
 					x_k = x_kp1;
-				} while (gradient_norm > this->_epsilon_gradient);
+				} while (gradient_norm > this->_epsilon_gradient && gradient_norm==gradient_norm);
 
 				return x_kp1;
 			}

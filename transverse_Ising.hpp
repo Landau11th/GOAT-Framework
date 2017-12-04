@@ -69,7 +69,7 @@ public:
 	Deng::Col_vector<Parameter> B(Parameter t) const;
 
 	//give the bare Hamiltonian including the external B field, w/o the control field
-	arma::Mat<Field> H_0(Parameter t) const;
+	virtual arma::Mat<Field> H_0(Parameter t) const;
 
 	//calculate control magnetic field based on the parameters
 	Deng::Col_vector<Parameter> control_field(Parameter t) const;
@@ -154,7 +154,26 @@ public:
 };
 
 
+template<typename Field, typename Parameter>
+class LMG : public Transverse_Ising_Impulse_Local<Field, Parameter>
+{
+public:
+	LMG(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
+		const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0)
+		: Transverse_Ising_Impulse_Local(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar)
+	{
+		this->interaction = this->S_total[0] * this->S_total[0] + 0.75*this->S_total[1] * this->S_total[1];
+		this->interaction = - this->interaction / this->_num_spin;
+	}
 
+	//give the bare Hamiltonian including the external B field, w/o the control field
+	virtual arma::Mat<Field> H_0(Parameter t) const override
+	{
+		return interaction + (this->B(t) ^ this->S_total);
+	};
+
+	virtual ~LMG() = default;
+};
 
 
 
