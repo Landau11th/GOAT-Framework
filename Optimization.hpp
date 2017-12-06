@@ -219,78 +219,98 @@ namespace Deng
 
 			void Set_Randomness(real rand) { _randomness = rand; };
 
-			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const
-			{
-				assert(start_coordinate.size() == this->_dim_para && "coordinate dimention mismatch in BFGS!");
-				x_k = start_coordinate;
-				real f_value = 0;
-				neg_grad_k = this->f->negative_gradient(x_k, f_value);
-				H_k = identity;
-
-				real temp = 0.0;
-
-				real gradient_norm = 0.0;
-				real coordinate_norm = 0.0;
-
-				real alpha_k = 0.125;
-
-				do
-				{
-					delta_x_k = alpha_k*(H_k*neg_grad_k);
-					x_kp1 = x_k + delta_x_k;
-					neg_grad_kp1 = this->f->negative_gradient(x_kp1, f_value);
-					y_k = neg_grad_k - neg_grad_kp1;
-
-					temp = arma::as_scalar(y_k.t()*delta_x_k);
-					H_kp1 = (identity - delta_x_k*y_k.t() / temp)*H_k*(identity - y_k*delta_x_k.t() / temp) + delta_x_k*delta_x_k.t() / temp;
-
-					gradient_norm = sqrt(arma::as_scalar(neg_grad_kp1.t()*neg_grad_kp1));
-					coordinate_norm = sqrt(arma::as_scalar(x_kp1.t()*x_kp1));
-
-					if (coordinate_norm > 1.0*this->_dim_para*_randomness)
-					{
-						do
-						{
-							std::cerr << "too far away from origin, start with random position near origin\n";
-							std::cout << "too far away from origin, start with random position near origin\n";
-							x_k.randu();
-							x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5)*_randomness;
-							neg_grad_k = this->f->negative_gradient(x_k, f_value);
-							gradient_norm = sqrt(arma::as_scalar(neg_grad_k.t()*neg_grad_k));
-						} while (f_value != f_value);
-						H_k = identity;
-						continue;
-					}
-					else if (f_value != f_value)
-					{
-						
-						do
-						{
-							std::cerr << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
-							std::cout << "NaN in Runge Kutta. Might be too far away from origin, or dt is not small enough\n";
-							x_k.randu();
-							x_k = sqrt(this->_dim_para)*2.0*(x_k - 0.5)*_randomness;
-							neg_grad_k = this->f->negative_gradient(x_k, f_value);
-							gradient_norm = sqrt(arma::as_scalar(neg_grad_k.t()*neg_grad_k));
-						} while (f_value != f_value);
-						H_k = identity;
-						gradient_norm = 10.0*this->_epsilon_gradient;
-						continue;
-					}
-
-					std::cout << "new function value: " << f_value << " with gradient norm " << gradient_norm << std::endl;
-					std::cout << x_kp1.t() << std::endl;
-
-
-					H_k = H_kp1;
-					neg_grad_k = neg_grad_kp1;
-					x_k = x_kp1;
-				} while (gradient_norm > this->_epsilon_gradient && gradient_norm==gradient_norm);
-
-				return x_kp1;
-			}
+			arma::Col<real> BFGS(arma::Col<real> start_coordinate) const;
 
 			virtual ~Quasi_Newton() = default;
+		};
+
+
+		template<typename real>
+		class Annealing : public Min_Know_Function<real>
+		{
+		protected:
+			//did not use multimap since it's unlikely to have two values that are exactly the sme
+			std::map<real, arma::Col<real>> _min_func_values;
+			unsigned int _num_mins;
+			real _randomness;
+			real _T_start;
+		public:
+			Annealing(unsigned int dim_para, real epsilon, unsigned int max_iteration, real T_start, unsigned int num_mins, real rand)
+				: Min_Know_Function(dim_para, epsilon, max_iteration),_T_start(T_start), _num_mins(num_mins), _randomness(rand)
+			{
+				Init_Mins();
+				//initialize the random seed
+				arma::arma_rng::set_seed(time(nullptr));
+			}
+
+			//clear the map, and fill it with some values bigger than 0
+			void Init_Mins()
+			{
+				_min_func_values.clear();
+
+				arma::Col<real> zerozero(this->_dim_para, arma::fill::zeros);
+
+				for (unsigned int i = 0; i < _num_mins; ++i)
+				{
+					_min_func_values.emplace(i, zerozero);
+				}
+			}
+
+			arma::Col<real> New_Coord(const arma::Col<real> & coord) const
+			{
+				auto coord_new = coord;
+
+				coord_new.randu();
+
+				coord_new = 2 * coord_new - 1.0;
+
+				coord_new = _randomness*coord_new;
+
+				return coord_new + coord;
+			};
+
+
+
+			void Search_for_Min(const arma::Col<real> start_coord) const
+			{
+				real f_value = 0;
+				real f_value_temp;
+				arma::Col<real> rand_shift(this->_dim_para);
+				arma::Col<real> coord = start_coord;
+				arma::Col<real> coord_temp = start_coord;
+				arma::Mat<real> scalar_rand(1, 1);
+
+				real T;
+				
+				for (unsigned int i = 0; i < this->_max_iteration; ++i)
+				{
+					coord_temp = New_Coord(coord);
+					
+					f_value_temp = this->f.function_value(coord_temp);
+					
+					//add new pair to map
+					_min_func_values.emplace(f_value_temp, coord);
+					//erase the pair with the largest function value
+					_min_func_values.erase(--_min_func_values.end());
+
+					//temperature decrease linearly
+					T = T_max * (1.0 - (1.0*i)/ this->_max_iteration);
+					////or exponentially
+					//T = T_max * std::exp(-100.0*i) / this->_max_iteration);
+
+					if (arma::as_scalar(scalar_rand.randu) < std::exp(-(f_value - f_value_temp) / T))
+					{
+						coord = coord_temp;
+						f_value = f_value_temp;
+					}
+				}
+
+				for (auto iter = _min_func_values.begin(); iter != _min_func_values.end(); ++iter)
+				{
+					std::cout << (*iter).first << "\n";
+					std::cout << (*iter).second.t() << "\n\n";
+				}
+			};
 		};
 
 	}
