@@ -24,6 +24,7 @@ typedef std::complex<real> elementtype;
 
 int main(int argc, char** argv)
 {
+	
 	if (argc > 2)
 	{
 		Verify_level_crossing(argv[1]);
@@ -51,6 +52,27 @@ int main(int argc, char** argv)
 	const double epsilon = myargs("epsilon");
 	const double epsilon_gradient = sqrt(dim_hamil)*epsilon;
 	const unsigned int conj_grad_max_iter = myargs("conj_grad_max_iter");
+	const unsigned int annealing_max_iter = myargs("annealing_max_iter");
+
+
+	//output to file
+	std::ofstream outputfile;
+	std::string filename;
+	//set file name
+	filename = std::to_string(num_spinor) + "spins_" + std::to_string(dim_para) + "paras_t_dep_";
+	filename = filename + Deng::Misc::TimeStamp() + ".dat";
+	//set output & format
+	outputfile.open(filename, std::ios_base::app);
+	outputfile.precision(10);
+	outputfile.setf(std::ios::fixed);
+	//indicate system specs at the beginning
+	myargs(outputfile);
+	outputfile << "Number of spin: " << num_spinor << std::endl;
+	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
+	outputfile << "Take initial position with " << rand << " randomness" << std::endl << std::endl;
+	outputfile << "Programme starts at " << Deng::Misc::TimeStamp() << std::endl << std::endl << std::endl;
+
+
 
 
 	//Transverse_Ising<elementtype, real> H(num_spinor, N_t, tau, dim_para, dim_para/3);
@@ -107,14 +129,22 @@ int main(int argc, char** argv)
 	//set up Conjugate gradient method for searching minimum
 	//Deng::Optimization::Min_Conj_Grad<real> Conj_Grad(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
 	//Deng::Optimization::Newton_Find_Root<real> NT_search(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
+	//quasi newton
 	Deng::Optimization::Quasi_Newton<real> Quasi_NT(dim_para, epsilon, conj_grad_max_iter, epsilon_gradient);
 	Quasi_NT.Set_Randomness(rand);
+	//annealing
+	Deng::Optimization::Annealing<real> Anneal(dim_para, epsilon, annealing_max_iter, epsilon_gradient, 10, rand);
 
+
+	
 	//appoint target function
 	//Conj_Grad.Assign_Target_Function(&target);
 	//NT_search.Assign_Target_Function(&target);
 	//NT_search.Assign_Target_Function_Value(-(real)(dim_hamil));
 	Quasi_NT.Assign_Target_Function(&target);
+	Anneal.Assign_Target_Function(&target);
+	
+	
 	//appoint the 1D search method
 	//Conj_Grad.Opt_1D = Deng::Optimization::OneD_Golden_Search<real>;
 	//Conj_Grad.Opt_1D = Deng::Optimization::My_1D_foward_method<real>;
@@ -125,22 +155,7 @@ int main(int argc, char** argv)
 
 	//target.function_value(start_error);
 
-	//output to file
-	std::ofstream outputfile;
-	std::string filename;
-	//set file name
-	filename = std::to_string(num_spinor) + "spins_" + std::to_string(dim_para) + "paras_t_dep_";
-	filename = filename + Deng::Misc::TimeStamp() + ".dat";
-	//set output & format
-	outputfile.open(filename, std::ios_base::app);
-	outputfile.precision(10);
-	outputfile.setf(std::ios::fixed);
-	//indicate system specs at the beginning
-	myargs(outputfile);
-	outputfile << "Number of spin: " << num_spinor << std::endl;
-	outputfile << "Dim of Paramateric space: " << dim_para << "  with " << dim_para_each_direction << " paras for each direction" << std::endl;
-	outputfile << "Take initial position with " << rand << " randomness" << std::endl << std::endl;
-	outputfile << "Programme starts at " << Deng::Misc::TimeStamp() << std::endl << std::endl << std::endl;
+
 
 	arma::Col<real> current_min_coordinate(dim_para);
 	real current_min;
@@ -158,69 +173,95 @@ int main(int argc, char** argv)
 	//	-5.3629 ,-1.8439 ,-0.9611 ,   3.9956   ,
 	//	1.7500   , 0.9611  ,  3.9424 ,-0.9289 };
 
+
+	//annealing
+	Anneal.Search_for_Min(start);
+	Anneal.Output_to_file(outputfile);
+
+	outputfile << "\nQuasi Newton methods of the given mins\n\n";
+
+	auto anneal_mins = Anneal.Mins_from_Search();
+
+	for (auto iter = anneal_mins.begin(); iter != anneal_mins.end(); ++iter)
+	{
+		current_min_coordinate = Quasi_NT.BFGS((*iter).second);
+		current_min = target.function_value(current_min_coordinate);
+		//print out
+		outputfile << "Reach stationary point " << current_min << "\n";
+		current_min_coordinate.t().raw_print(outputfile);
+	}
+
+	
+	outputfile << "\n\nProgramme ends at " << Deng::Misc::TimeStamp() << std::endl;
+	outputfile.close();
+
+	return 0;
+
+
+
+	//quasi newton
 	//start search
 	bool is_stationary = false;
 	bool is_global_min = true;
 	do {
 		is_global_min = true;
-		/*
-		do {
-			//reached a position
-			current_min_coordinate = Quasi_NT.BFGS(start);
-			current_min = target.function_value(current_min_coordinate);
+		//
+		//do {
+		//	//reached a position
+		//	current_min_coordinate = Quasi_NT.BFGS(start);
+		//	current_min = target.function_value(current_min_coordinate);
+		//	if (current_min < -((real)dim_hamil - (1.0*epsilon)))
+		//	{
+		//		std::cout << "Good enough!\n";
+		//		is_global_min = true;
+		//		is_stationary = false;
+		//	}
+		//	else
+		//	{
+		//		//once reach the 0 negative gradient
+		//		//randomly pick several directions to check if it's only a stationary point
+		//		is_stationary = false;
 
-			if (current_min < -((real)dim_hamil - (1.0*epsilon)))
-			{
-				std::cout << "Good enough!\n";
-				is_global_min = true;
-				is_stationary = false;
-			}
-			else
-			{
-				//once reach the 0 negative gradient
-				//randomly pick several directions to check if it's only a stationary point
-				is_stationary = false;
+		//		//set up random direction
+		//		arma::Col<real> random_search_direction = current_min_coordinate;
 
-				//set up random direction
-				arma::Col<real> random_search_direction = current_min_coordinate;
+		//		//number of trials should increases with dimention of parametric space
+		//		for (unsigned int i = 0; i < dim_para; ++i)
+		//		{
+		//			//randomly pick a direction
+		//			random_search_direction.randn();
 
-				//number of trials should increases with dimention of parametric space
-				for (unsigned int i = 0; i < dim_para; ++i)
-				{
-					//randomly pick a direction
-					random_search_direction.randn();
+		//			//go through any 1D search
+		//			real lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+		//			if (lambda < 0)
+		//			{
+		//				random_search_direction = -random_search_direction;
+		//				lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
+		//			}
 
-					//go through any 1D search
-					real lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
-					if (lambda < 0)
-					{
-						random_search_direction = -random_search_direction;
-						lambda = Deng::Optimization::OneD_Golden_Search<real>(current_min_coordinate, random_search_direction, &target, 200, epsilon);
-					}
+		//			//new function value, which should be <= the old one
+		//			real temp_func_value = target.function_value(current_min_coordinate + lambda*random_search_direction);
 
-					//new function value, which should be <= the old one
-					real temp_func_value = target.function_value(current_min_coordinate + lambda*random_search_direction);
+		//			if (temp_func_value <= (current_min - epsilon / 256.0))
+		//			{
+		//				//this minimum is only a stationary point
+		//				is_stationary = true;
+		//				start = current_min_coordinate + lambda*random_search_direction;
+		//				std::cout << "\n\nNot a (local) minimum\n\n";
+		//				break;
+		//			}
+		//		}
+		//		if (!is_stationary)
+		//		{
+		//			std::cout << "\nReach (local) minimum" << std::endl;
+		//			outputfile << "Reach(local) minimum of " << current_min << "\n";
+		//			//outputfile << current_min_coordinate.t() << "\n";
+		//			current_min_coordinate.t().raw_print(outputfile);
+		//		}
+		//	}
 
-					if (temp_func_value <= (current_min - epsilon / 256.0))
-					{
-						//this minimum is only a stationary point
-						is_stationary = true;
-						start = current_min_coordinate + lambda*random_search_direction;
-						std::cout << "\n\nNot a (local) minimum\n\n";
-						break;
-					}
-				}
-				if (!is_stationary)
-				{
-					std::cout << "\nReach (local) minimum" << std::endl;
-					outputfile << "Reach(local) minimum of " << current_min << "\n";
-					//outputfile << current_min_coordinate.t() << "\n";
-					current_min_coordinate.t().raw_print(outputfile);
-				}
-			}
-
-		} while (is_stationary);
-		*/
+		//} while (is_stationary);
+		
 
 		current_min_coordinate = Quasi_NT.BFGS(start);
 		current_min = target.function_value(current_min_coordinate);
@@ -260,8 +301,9 @@ int main(int argc, char** argv)
 	} while (!is_global_min);
 
 
-	outputfile << "Programme ends at" << Deng::Misc::TimeStamp() << std::endl;
-    outputfile.close();
+
+
+
 	//Deng::Optimization::Newton_Find_Min<real> NT_search_hess(dim_para, 0.25*dim_hamil, conj_grad_max_iter, epsilon_gradient);
 	//NT_search_hess.Assign_Target_Function(&target_finite_diff);
 	//real a;
@@ -294,6 +336,10 @@ int main(int argc, char** argv)
 	//	start = NT_search.Newton_1st_order(start);
 
 	//} while (target.function_value(start) - NT_search.Value_of_target_value() > new_epsilon);
+
+
+	outputfile << "\n\nProgramme ends at" << Deng::Misc::TimeStamp() << std::endl;
+	outputfile.close();
 
     return 0;
 }

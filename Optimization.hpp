@@ -230,7 +230,7 @@ namespace Deng
 		{
 		protected:
 			//did not use multimap since it's unlikely to have two values that are exactly the sme
-			std::map<real, arma::Col<real>> _min_func_values;
+			mutable std::map<real, arma::Col<real>> _min_func_values;
 			unsigned int _num_mins;
 			real _randomness;
 			real _T_start;
@@ -261,15 +261,13 @@ namespace Deng
 				auto coord_new = coord;
 
 				coord_new.randu();
-
 				coord_new = 2 * coord_new - 1.0;
-
 				coord_new = _randomness*coord_new;
 
 				return coord_new + coord;
 			};
 
-
+			std::map<real, arma::Col<real>> Mins_from_Search() const { return _min_func_values; };
 
 			void Search_for_Min(const arma::Col<real> start_coord) const
 			{
@@ -286,19 +284,19 @@ namespace Deng
 				{
 					coord_temp = New_Coord(coord);
 					
-					f_value_temp = this->f.function_value(coord_temp);
+					f_value_temp = this->f->function_value(coord_temp);
 					
 					//add new pair to map
-					_min_func_values.emplace(f_value_temp, coord);
+					_min_func_values.emplace(f_value_temp, coord_temp);
 					//erase the pair with the largest function value
 					_min_func_values.erase(--_min_func_values.end());
 
 					//temperature decrease linearly
-					T = T_max * (1.0 - (1.0*i)/ this->_max_iteration);
+					T = _T_start * (1.0 - (1.0*i)/ this->_max_iteration);
 					////or exponentially
 					//T = T_max * std::exp(-100.0*i) / this->_max_iteration);
 
-					if (arma::as_scalar(scalar_rand.randu) < std::exp(-(f_value - f_value_temp) / T))
+					if (arma::as_scalar(scalar_rand.randu()) < std::exp(-(f_value - f_value_temp) / T))
 					{
 						coord = coord_temp;
 						f_value = f_value_temp;
@@ -308,9 +306,20 @@ namespace Deng
 				for (auto iter = _min_func_values.begin(); iter != _min_func_values.end(); ++iter)
 				{
 					std::cout << (*iter).first << "\n";
-					std::cout << (*iter).second.t() << "\n\n";
+					std::cout << (*iter).second.t() << "\n";
 				}
 			};
+
+			//output all read arguments to output_strm
+			void Output_to_file(std::ostream & output_strm) const
+			{
+				for (auto iter = _min_func_values.begin(); iter != _min_func_values.end(); ++iter)
+				{
+					output_strm << (*iter).first << "\n";
+					//output_strm << (*iter).second.t() << "\n";
+					(*iter).second.t().raw_print(output_strm);
+				}
+			}
 		};
 
 	}
