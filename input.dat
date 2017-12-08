@@ -1,9 +1,8 @@
-num_spinor = 3
+num_spinor = 2
 dim_para_each_direction = 3
 rand = 1
 
 N_t = 2048
 tau = 3.0
 epsilon = 0.0078125
-conj_grad_max_iter = 100  # for conjugate gradiant method
-annealing_max_iter = 50000 # for annealing method
+conj_grad_max_iter = 100;

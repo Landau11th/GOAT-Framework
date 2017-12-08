@@ -286,6 +286,8 @@ namespace Deng
 					
 					f_value_temp = this->f->function_value(coord_temp);
 					
+					std::cout << f_value_temp << std::endl;
+
 					//add new pair to map
 					_min_func_values.emplace(f_value_temp, coord_temp);
 					//erase the pair with the largest function value
@@ -313,12 +315,15 @@ namespace Deng
 			//output all read arguments to output_strm
 			void Output_to_file(std::ostream & output_strm) const
 			{
+				//std::cout << __func__ << std::endl;
+				
 				for (auto iter = _min_func_values.begin(); iter != _min_func_values.end(); ++iter)
 				{
 					output_strm << (*iter).first << "\n";
 					//output_strm << (*iter).second.t() << "\n";
 					(*iter).second.t().raw_print(output_strm);
 				}
+				output_strm << std::endl;
 			}
 		};
 

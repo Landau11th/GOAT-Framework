@@ -141,6 +141,7 @@ class Transverse_Ising_Impulse_Local : public Transverse_Ising_Local_Control<Fie
 {
 protected:
 	const unsigned int	_num_impulse;
+	const Parameter _scale_of_width = 100.0;
 public:
 	Transverse_Ising_Impulse_Local(const unsigned int num_spin, const unsigned int N_t, const Parameter tau,
 		const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar = 1.0);

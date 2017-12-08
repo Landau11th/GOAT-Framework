@@ -89,20 +89,20 @@ Deng::Col_vector<Parameter> Transverse_Ising<Field, Parameter>::B(Parameter t) c
 	//B_field[1] = 0.0;
 	//B_field[2] = this->_B_z_max *t / this->_tau;
 
-	////benchmark constant B field
-	//B_field[0] = this->_B_x_max;
-	//B_field[1] = 0.0;
-	//B_field[2] = this->_B_z_max;
+	//benchmark constant B field
+	B_field[0] = this->_B_x_max;
+	B_field[1] = 0.0;
+	B_field[2] = this->_B_z_max;
 
 	////benchmark quadratic
 	//B_field[0] = this->_B_x_max;
 	//B_field[1] = 0.0;
 	//B_field[2] = this->_B_z_max*(t / this->_tau)*(1 + t / this->_tau);
 
-	//benchmark trig
-	B_field[0] = this->_B_x_max;
-	B_field[1] = 0.0;
-	B_field[2] = this->_B_z_max*sin(_omega *t);
+	////benchmark trig
+	//B_field[0] = this->_B_x_max;
+	//B_field[1] = 0.0;
+	//B_field[2] = this->_B_z_max*sin(_omega *t);
 
 
 	return B_field;
@@ -363,7 +363,8 @@ Transverse_Ising_Impulse_Local<Field, Parameter>::Transverse_Ising_Impulse_Local
 	const unsigned int dim_para, const unsigned int dim_para_each_direction, const Parameter hbar)
 	: Transverse_Ising_Local_Control<Field, Parameter>(num_spin, N_t, tau, dim_para, dim_para_each_direction, hbar), _num_impulse(dim_para_each_direction/3)
 {
-	assert((dim_para_each_direction % 3 == 0) && "dim_para_each_direction is not multiple of 3");
+	////for totally independent impulses
+	//assert((dim_para_each_direction % 3 == 0) && "dim_para_each_direction is not multiple of 3");
 }
 template<typename Field, typename Parameter>
 Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_component(const Parameter t, const unsigned int para_idx_begin) const
@@ -371,13 +372,26 @@ Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_compon
 	//REMARK: this virtual function is for Gaussian impulse.
 	Parameter component = 0.0;
 	
+	//for totally independent impulses
 	Parameter t_prime = 0.0;
-	for (unsigned int i = 0; i < _num_impulse; i += 3)
+	for (unsigned int i = 0; i < this->_dim_para_each_direction; i += 3)
 	{
 		t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
 		t_prime *= t_prime;
 		component += this->parameters[para_idx_begin + i] * std::exp2(-t_prime);
 	}
+
+
+
+	////for cohenrent impulses
+	//Parameter t_prime = 0.0;
+	//for (unsigned int i = 0; i < this->_dim_para_each_direction-1; i += 2)
+	//{
+	//	//scale down the width parameter
+	//	t_prime = _scale_of_width * (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[this->_dim_para_each_direction - 1];
+	//	t_prime *= t_prime;
+	//	component += this->parameters[para_idx_begin + i] * std::exp2(-t_prime);
+	//}
 
 	return component;
 }
@@ -388,6 +402,7 @@ Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_compon
 	//REMARK: this virtual function is for Gaussian impulse.
 	Parameter component = 0.0;
 
+	//for totally independent impulses
 	const unsigned int i = (para_idx_derivative / 3) * 3;
 	Parameter t_prime = (t - this->parameters[para_idx_begin + i + 1]) / this->parameters[para_idx_begin + i + 2];
 	Parameter t_prime_sq = t_prime*t_prime;
@@ -406,6 +421,41 @@ Parameter Transverse_Ising_Impulse_Local<Field, Parameter>::control_field_compon
 	{
 		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime_sq / this->parameters[para_idx_begin + i + 2];
 	}
+
+
+
+	////for cohenrent impulses
+	//if (para_idx_derivative != this->_dim_para_each_direction)
+	//{
+	//	const unsigned int i = (para_idx_derivative / 2) * 2;
+	//	Parameter t_prime = _scale_of_width*(t - this->parameters[para_idx_begin + i + 1]) / this->parameters[this->_dim_para_each_direction - 1];
+	//	Parameter t_prime_sq = t_prime*t_prime;
+
+	//	const unsigned int flag = para_idx_derivative % 2 ;
+
+	//	if (flag == 0)
+	//	{
+	//		component = std::exp2(-t_prime_sq);
+	//	}
+	//	else
+	//	{
+	//		component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime / this->parameters[para_idx_begin + i + 2];
+	//	}
+	//}
+	//else
+	//{
+	//	//component = this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime_sq / this->parameters[para_idx_begin + i + 2];
+	//	Parameter t_prime = 0;
+	//	Parameter t_prime_sq = 0;
+
+	//	for (unsigned int i = 0; i < this->_dim_para_each_direction - 1; i += 2)
+	//	{
+	//		//scale down the width parameter
+	//		t_prime = _scale_of_width*(t - this->parameters[para_idx_begin + i + 1]) / this->parameters[this->_dim_para_each_direction - 1];
+	//		t_prime_sq = t_prime*t_prime;
+	//		component += this->parameters[para_idx_begin + i] * std::exp2(-t_prime_sq) * 2 * t_prime_sq / this->parameters[this->_dim_para_each_direction - 1];
+	//	}
+	//}
 
 
 	return component;
